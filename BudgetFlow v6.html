@@ -1,0 +1,1462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BudgetFlow PH</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600&family=Playfair+Display:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+--bg:#0F1117;--surface:#181C27;--surface2:#1E2334;--surface3:#252A3A;
+--border:#2A2F42;--border2:#353B52;
+--text:#F0F2FF;--text2:#8B90A8;--text3:#555B73;
+--green:#22C55E;--green-bg:rgba(34,197,94,0.1);
+--red:#F87171;--red-bg:rgba(248,113,113,0.1);
+--blue:#60A5FA;--blue-bg:rgba(96,165,250,0.1);
+--gold:#FBBF24;--gold-bg:rgba(251,191,36,0.1);
+--purple:#A78BFA;--purple-bg:rgba(167,139,250,0.1);
+--teal:#2DD4BF;--teal-bg:rgba(45,212,191,0.1);
+--accent:#6366F1;--accent2:#818CF8;
+--r:10px;--r-lg:16px;--r-xl:20px;
+}
+body{font-family:'Sora',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;line-height:1.6}
+::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+.app{display:flex;height:100vh;overflow:hidden}
+.sidebar{width:220px;min-width:220px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto}
+.logo{padding:24px 20px 20px;border-bottom:1px solid var(--border)}
+.logo h1{font-family:'Playfair Display',serif;font-size:20px;font-weight:500;letter-spacing:-.3px}
+.logo span{font-size:11px;color:var(--text3);letter-spacing:1px;text-transform:uppercase}
+.nav-section{padding:16px 12px 8px;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;font-weight:600}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;margin:2px 8px;border-radius:var(--r);cursor:pointer;color:var(--text2);font-size:13px;transition:all .15s;border:none;background:transparent;width:calc(100% - 16px);text-align:left}
+.nav-item svg{width:16px;height:16px;flex-shrink:0;opacity:.7}
+.nav-item:hover{background:var(--surface2);color:var(--text)}
+.nav-item.active{background:var(--accent);color:#fff}
+.nav-item.active svg{opacity:1}
+.main{flex:1;overflow-y:auto;background:var(--bg)}
+.page{display:none;padding:28px 32px;max-width:1160px}
+.page.active{display:block}
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px}
+.page-title{font-family:'Playfair Display',serif;font-size:26px;font-weight:400}
+.page-sub{font-size:13px;color:var(--text3);margin-top:2px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:20px 24px}
+.card-title{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;font-weight:600;margin-bottom:16px}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px}
+.metric{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:16px 20px}
+.metric .m-label{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px}
+.metric .m-val{font-family:'Playfair Display',serif;font-size:22px;font-weight:400}
+.metric .m-sub{font-size:11px;color:var(--text3);margin-top:4px}
+.m-green{color:var(--green)}.m-red{color:var(--red)}.m-gold{color:var(--gold)}.m-purple{color:var(--purple)}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:500;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+.modal-overlay.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border2);border-radius:var(--r-xl);padding:28px;width:100%;max-width:560px;max-height:92vh;overflow-y:auto;box-shadow:0 40px 80px rgba(0,0,0,.5)}
+.modal h3{font-family:'Playfair Display',serif;font-size:22px;font-weight:400;margin-bottom:20px}
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px;font-weight:600}
+input,select,textarea{width:100%;padding:9px 12px;border:1px solid var(--border2);border-radius:var(--r);font-family:'Sora',sans-serif;font-size:13px;color:var(--text);background:var(--surface2);transition:border-color .15s;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--accent)}
+select option{background:var(--surface2)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.modal-footer{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;padding-top:16px;border-top:1px solid var(--border)}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--r);font-family:'Sora',sans-serif;font-size:13px;font-weight:500;cursor:pointer;border:none;transition:all .15s;white-space:nowrap}
+.btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{background:#4F46E5}
+.btn-ghost{background:transparent;color:var(--text2);border:1px solid var(--border2)}.btn-ghost:hover{background:var(--surface2);color:var(--text)}
+.btn-danger{background:var(--red-bg);color:var(--red);border:1px solid transparent}.btn-danger:hover{border-color:var(--red)}
+.btn-sm{padding:5px 10px;font-size:12px;border-radius:7px}
+.btn-xs{padding:3px 8px;font-size:11px;border-radius:5px}
+.btn-green{background:var(--green-bg);color:var(--green)}.btn-green:hover{background:rgba(34,197,94,.2)}
+.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:500;white-space:nowrap;cursor:pointer;user-select:none}
+.badge:hover{opacity:.8}
+.b-green{background:var(--green-bg);color:var(--green)}
+.b-gold{background:var(--gold-bg);color:var(--gold)}
+.b-blue{background:var(--blue-bg);color:var(--blue)}
+.b-gray{background:var(--surface3);color:var(--text3)}
+.b-purple{background:var(--purple-bg);color:var(--purple)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;font-weight:600;padding:8px 12px;border-bottom:1px solid var(--border)}
+td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:rgba(255,255,255,.02)}
+.cat-header-row td{background:var(--surface2);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--text3);padding:10px 12px}
+.cat-total-row td{background:var(--surface3);font-weight:500;font-size:12px;color:var(--text2);padding:8px 12px}
+.sub-row td{font-size:12px;color:var(--text3);padding:5px 12px 5px 28px;border-bottom:1px solid var(--border)}
+.grand-total-row{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:var(--surface2);border-radius:var(--r);margin-top:12px;font-weight:600;font-size:15px}
+.period-bar{display:flex;align-items:center;gap:8px;margin-bottom:20px;flex-wrap:wrap}
+.period-toggle{display:flex;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.ptog-btn{padding:7px 14px;font-family:'Sora',sans-serif;font-size:12px;cursor:pointer;border:none;background:transparent;color:var(--text2);transition:all .15s}
+.ptog-btn.active{background:var(--accent);color:#fff}
+.date-nav{display:flex;align-items:center;gap:8px}
+.date-nav button{padding:6px 10px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);border-radius:7px;cursor:pointer;font-size:13px;transition:all .15s}
+.date-nav button:hover{color:var(--text);border-color:var(--accent)}
+.date-display{font-size:14px;font-weight:500;color:var(--text);min-width:240px;text-align:center}
+.chart-wrap{position:relative;width:100%;height:240px}
+.prog-wrap{background:var(--surface3);border-radius:4px;height:5px;overflow:hidden;margin-top:8px}
+.prog-bar{height:100%;border-radius:4px;transition:width .4s}
+.bank-card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;margin-bottom:20px}
+.bank-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:20px;position:relative;overflow:hidden;transition:border-color .2s,opacity .2s,transform .15s;cursor:grab;user-select:none}
+.bank-card:active{cursor:grabbing}
+.bank-card:hover{border-color:var(--border2)}
+.bank-card.dragging{opacity:.3;transform:scale(.96);cursor:grabbing}
+.bank-card.drag-over{border:2px dashed var(--accent);background:rgba(99,102,241,0.06)}
+.drag-handle{position:absolute;top:14px;right:14px;display:flex;flex-direction:column;gap:3px;opacity:.2;pointer-events:none;transition:opacity .15s}
+.drag-handle span{display:block;width:18px;height:2px;background:var(--text2);border-radius:1px}
+.bank-card:hover .drag-handle{opacity:.5}
+.bc-inst{font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+.bc-amount{font-family:'Playfair Display',serif;font-size:28px;margin-bottom:2px}
+.bc-base{font-size:12px;color:var(--text3);margin-bottom:2px}
+.bc-desc{font-size:12px;color:var(--text3);margin-bottom:10px}
+.bc-delta{display:flex;gap:12px;margin-bottom:10px;font-size:12px}
+.bc-actions{display:flex;gap:6px;margin-top:10px}
+.section-tabs{display:flex;gap:4px;margin-bottom:20px;border-bottom:1px solid var(--border)}
+.stab{padding:10px 18px;font-size:13px;cursor:pointer;border:none;background:transparent;color:var(--text3);font-family:'Sora',sans-serif;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s}
+.stab:hover{color:var(--text)}
+.stab.active{color:var(--accent2);border-bottom-color:var(--accent)}
+.total-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+.ts-item{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:14px 16px}
+.ts-label{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px}
+.ts-val{font-family:'Playfair Display',serif;font-size:20px}
+.remaining-box{background:linear-gradient(135deg,var(--surface2),var(--surface3));border:1px solid var(--border2);border-radius:var(--r-lg);padding:20px 24px;display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;gap:20px}
+.rb-label{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px}
+.rb-amount{font-family:'Playfair Display',serif;font-size:36px}
+.rb-sub{font-size:12px;color:var(--text3);margin-top:6px}
+.section-header-bar{display:flex;align-items:baseline;justify-content:space-between;padding:12px 16px;background:var(--surface2);border-radius:var(--r) var(--r) 0 0;border:1px solid var(--border);border-bottom:none}
+.sh-title{font-size:13px;font-weight:600}
+.sh-cats{font-size:11px;color:var(--text3);font-weight:400;margin-left:8px}
+.sh-total{font-family:'Playfair Display',serif;font-size:18px}
+.table-card{border:1px solid var(--border);border-radius:0 0 var(--r) var(--r);overflow:hidden}
+.cat-input-row{display:flex;gap:8px;margin-top:8px}
+.cat-input-row input{flex:1}
+.empty-state{text-align:center;padding:40px 20px;color:var(--text3);font-size:13px}
+/* BANK FIELD HINT */
+.field-hint{font-size:11px;color:var(--text3);margin-top:4px;padding-left:2px}
+/* FLOW ARROW */
+.flow-arrow{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--text3);padding:6px 0}
+.flow-arrow .arrow{color:var(--accent2);font-size:16px}
+/* NOTES */
+.notes-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+.note-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:18px 20px;cursor:pointer;transition:border-color .2s,transform .15s;position:relative;display:flex;flex-direction:column;gap:10px}
+.note-card:hover{border-color:var(--border2);transform:translateY(-1px)}
+.note-card.pinned{border-color:var(--gold)}
+.note-pin{position:absolute;top:14px;right:14px;font-size:14px}
+.note-title{font-weight:500;font-size:14px;line-height:1.4;word-break:break-word}
+.note-body{font-size:13px;color:var(--text2);line-height:1.6;white-space:pre-wrap;word-break:break-word;max-height:100px;overflow:hidden;mask-image:linear-gradient(to bottom,black 60%,transparent 100%)}
+.note-footer{display:flex;align-items:center;justify-content:space-between;margin-top:4px}
+.note-date{font-size:11px;color:var(--text3)}
+.note-tags{display:flex;gap:4px;flex-wrap:wrap}
+.note-tag{padding:2px 8px;border-radius:20px;font-size:11px;background:var(--surface3);color:var(--text3)}
+.note-actions{display:flex;gap:4px;opacity:0;transition:opacity .15s}
+.note-card:hover .note-actions{opacity:1}
+.notes-section-title{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;font-weight:600;margin-bottom:10px;margin-top:4px}
+.tag-pills{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.tag-pill{display:flex;align-items:center;gap:4px;padding:3px 10px;background:var(--surface3);border-radius:20px;font-size:12px;color:var(--text2)}
+.tag-pill button{background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;line-height:1;padding:0}
+.color-swatches{display:flex;gap:8px;flex-wrap:wrap}
+.swatch{width:24px;height:24px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:transform .15s}
+.swatch:hover{transform:scale(1.15)}
+.swatch.selected{border-color:var(--text)}
+.toast{position:fixed;bottom:24px;right:24px;background:var(--surface);border:1px solid var(--border2);color:var(--text);padding:12px 18px;border-radius:var(--r);font-size:13px;z-index:999;opacity:0;transform:translateY(8px);transition:all .25s;pointer-events:none;box-shadow:0 10px 30px rgba(0,0,0,.4)}
+.toast.show{opacity:1;transform:translateY(0)}
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="sidebar">
+  <div class="logo"><h1>BudgetFlow</h1><span>PH &middot; Personal Finance</span></div>
+  <div class="nav-section">Main</div>
+  <button class="nav-item active" onclick="nav('dashboard')">
+    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+    Dashboard
+  </button>
+  <button class="nav-item" onclick="nav('budget')">
+    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+    Budget
+  </button>
+  <button class="nav-item" onclick="nav('notes')">
+    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+    Notes
+  </button>
+  <div class="nav-section">Settings</div>
+  <button class="nav-item" onclick="nav('categories')">
+    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a2 2 0 014-4z"/></svg>
+    Categories
+  </button>
+  <div style="flex:1"></div>
+  <div style="padding:16px 12px;font-size:11px;color:var(--text3)" id="sidebar-date"></div>
+</aside>
+
+<div class="main">
+
+<!-- DASHBOARD -->
+<div id="page-dashboard" class="page active">
+  <div class="topbar">
+    <div><div class="page-title">Dashboard</div><div class="page-sub">Live bank balances &mdash; updated by your budget entries</div></div>
+    <button class="btn btn-primary" onclick="openBankModal()">+ Add Bank Account</button>
+  </div>
+  <div id="dash-metrics" class="metrics"></div>
+  <div class="bank-card-grid" id="bank-cards-grid"></div>
+  <div class="g2">
+    <div class="card"><div class="card-title">Balance by account</div><div class="chart-wrap"><canvas id="bankChart"></canvas></div></div>
+    <div class="card"><div class="card-title">This week&rsquo;s snapshot</div><div id="dash-snap"></div></div>
+  </div>
+</div>
+
+<!-- BUDGET -->
+<div id="page-budget" class="page">
+  <div class="topbar">
+    <div><div class="page-title">Budget</div><div class="page-sub" id="budget-sub">Plan and track your money</div></div>
+    <button class="btn btn-primary" onclick="openEntryModal()">+ Add Entry</button>
+  </div>
+  <div class="period-bar">
+    <div class="period-toggle">
+      <button class="ptog-btn active" onclick="setPeriod('weekly',this)">Weekly</button>
+      <button class="ptog-btn" onclick="setPeriod('biweekly',this)">Bi-weekly</button>
+      <button class="ptog-btn" onclick="setPeriod('monthly',this)">Monthly</button>
+    </div>
+    <div class="date-nav">
+      <button onclick="shiftPeriod(-1)">&#8592;</button>
+      <div class="date-display" id="date-display">&mdash;</div>
+      <button onclick="shiftPeriod(1)">&#8594;</button>
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="goToday()">Today</button>
+  </div>
+  <div class="total-strip" id="total-strip"></div>
+  <div class="remaining-box">
+    <div>
+      <div class="rb-label">Remaining Balance</div>
+      <div class="rb-amount" id="remaining-amt">&#8369;0.00</div>
+      <div class="rb-sub" id="remaining-sub"></div>
+    </div>
+    <div class="chart-wrap" style="width:220px;height:180px;flex-shrink:0"><canvas id="pieChart"></canvas></div>
+  </div>
+  <div class="section-tabs">
+    <button class="stab active" onclick="setTab('income',this)">Income</button>
+    <button class="stab" onclick="setTab('expenses',this)">Expenses</button>
+    <button class="stab" onclick="setTab('savings',this)">Savings</button>
+  </div>
+  <div id="tab-income" class="tab-content"></div>
+  <div id="tab-expenses" class="tab-content" style="display:none"></div>
+  <div id="tab-savings" class="tab-content" style="display:none"></div>
+</div>
+
+<!-- NOTES -->
+<div id="page-notes" class="page">
+  <div class="topbar">
+    <div><div class="page-title">Notes</div><div class="page-sub">Jot down ideas and reminders</div></div>
+    <button class="btn btn-primary" onclick="openNoteModal()">+ New Note</button>
+  </div>
+  <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">
+    <input type="text" id="notes-search" placeholder="Search notes&hellip;" oninput="renderNotes()" style="flex:1;min-width:180px;max-width:320px">
+    <select id="notes-filter-tag" onchange="renderNotes()" style="width:auto;min-width:140px"><option value="">All tags</option></select>
+    <select id="notes-sort" onchange="renderNotes()" style="width:auto;min-width:140px">
+      <option value="updated">Last updated</option><option value="created">Date created</option><option value="title">Title A&ndash;Z</option>
+    </select>
+  </div>
+  <div id="notes-pinned-section"></div>
+  <div id="notes-grid" class="notes-grid"></div>
+</div>
+
+<!-- CATEGORIES -->
+<div id="page-categories" class="page">
+  <div class="topbar"><div><div class="page-title">Categories</div><div class="page-sub">Manage income and expense categories</div></div></div>
+  <div class="g2">
+    <div class="card">
+      <div class="card-title">Income categories</div>
+      <div id="cat-income-list"></div>
+      <div class="cat-input-row">
+        <input type="text" id="cat-income-input" placeholder="New category&hellip;" onkeydown="if(event.key==='Enter')addCat('income')">
+        <button class="btn btn-green btn-sm" onclick="addCat('income')">Add</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Savings / Bank accounts <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:12px;color:var(--text2)">&mdash; managed in Dashboard</span></div>
+      <div id="cat-savings-readonly"></div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div class="card-title" style="margin-bottom:0">Expense categories &amp; sub-categories</div>
+      <button class="btn btn-primary btn-sm" onclick="addExpenseMainCat()">+ Add main category</button>
+    </div>
+    <div id="cat-expense-list"></div>
+  </div>
+</div>
+
+</div></div>
+
+<!-- BANK MODAL -->
+<div class="modal-overlay" id="bank-modal">
+  <div class="modal">
+    <h3 id="bank-modal-title">Add Bank Account</h3>
+    <div class="form-row">
+      <div class="form-group"><label>Account name</label><input type="text" id="bk-name" placeholder="e.g. BDO Savings"></div>
+      <div class="form-group"><label>Bank / Institution</label><input type="text" id="bk-bank" placeholder="e.g. BDO, GCash, Maya"></div>
+    </div>
+    <div class="form-group"><label>Description</label><input type="text" id="bk-desc" placeholder="What is this account for?"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Starting balance (&#8369;)</label><input type="number" id="bk-balance" placeholder="0.00"><div class="field-hint">Manual balance before any budget entries</div></div>
+      <div class="form-group"><label>Goal amount (&#8369;, optional)</label><input type="number" id="bk-goal" placeholder="0.00"></div>
+    </div>
+    <div class="form-group"><label>As of date</label><input type="date" id="bk-date"></div>
+    <div class="form-group"><label>Color tag</label>
+      <select id="bk-color">
+        <option value="var(--red)">Red</option>
+        <option value="#F472B6">Pink</option>
+        <option value="var(--purple)">Purple</option>
+        <option value="var(--gold)">Gold</option>
+        <option value="#FB923C">Orange</option>
+        <option value="var(--teal)">Teal</option>
+        <option value="var(--blue)">Blue</option>
+      </select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeBankModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveBankAccount()">Save account</button>
+    </div>
+  </div>
+</div>
+
+<!-- ENTRY MODAL -->
+<div class="modal-overlay" id="entry-modal">
+  <div class="modal">
+    <h3 id="entry-modal-title">Add Entry</h3>
+    <div class="form-row">
+      <div class="form-group"><label>Type</label>
+        <select id="en-type" onchange="onTypeChange()">
+          <option value="income">Income</option>
+          <option value="expense">Expense</option>
+          <option value="savings">Savings</option>
+        </select>
+      </div>
+      <div class="form-group" id="cat-group"><label>Category</label><select id="en-cat" onchange="onMainCatChange()"></select></div>
+    </div>
+    <div class="form-group" id="subcat-group" style="display:none"><label>Sub-category</label><select id="en-subcat"></select></div>
+    <div class="form-group" id="name-group"><label>Name / Description</label><input type="text" id="en-name" placeholder="e.g. Weekly salary, Grocery run"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Amount (&#8369;)</label><input type="number" id="en-amount" placeholder="0.00"></div>
+      <div class="form-group"><label>Transfer / Bank fee (&#8369;)</label><input type="number" id="en-fee" placeholder="0.00"></div>
+    </div>
+
+    <!-- INCOME: To Bank only -->
+    <div id="bank-income-row" class="form-group">
+      <label>Received into bank account</label>
+      <select id="en-to-bank-income"></select>
+      <div class="field-hint">Which bank account receives this income?</div>
+    </div>
+
+    <!-- EXPENSE: From Bank + optional To Bank when transferred -->
+    <div id="bank-expense-row" style="display:none">
+      <div class="form-group">
+        <label>Bank Source</label>
+        <select id="en-from-bank-expense"></select>
+        <div class="field-hint">Which bank account pays for this expense?</div>
+      </div>
+      <div class="form-group" id="expense-to-bank-group" style="display:none">
+        <label>Bank Destination</label>
+        <select id="en-to-bank-expense"></select>
+        <div class="field-hint">Destination account &mdash; balance will increase</div>
+      </div>
+      <div id="expense-transfer-preview" class="flow-arrow" style="display:none"></div>
+    </div>
+
+    <!-- SAVINGS: From Bank + To Bank -->
+    <div id="bank-savings-rows" style="display:none">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Bank Source</label>
+          <select id="en-from-bank-savings"></select>
+          <div class="field-hint">Source &mdash; balance will decrease</div>
+        </div>
+        <div class="form-group">
+          <label>Bank Destination</label>
+          <select id="en-to-bank-savings"></select>
+          <div class="field-hint">Destination &mdash; balance will increase</div>
+        </div>
+      </div>
+      <div id="transfer-preview" class="flow-arrow" style="display:none"></div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group"><label>Date</label><input type="date" id="en-date"></div>
+      <div class="form-group"><label>Status</label><select id="en-status"></select></div>
+    </div>
+    <div class="form-group"><label>Notes (optional)</label><input type="text" id="en-notes" placeholder="Optional notes"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeEntryModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEntry()">Save entry</button>
+    </div>
+  </div>
+</div>
+
+<!-- NOTE MODAL -->
+<div class="modal-overlay" id="note-modal">
+  <div class="modal">
+    <h3 id="note-modal-title">New note</h3>
+    <div class="form-group"><label>Title</label><input type="text" id="note-title-input" placeholder="Note title&hellip;"></div>
+    <div class="form-group"><label>Content</label><textarea id="note-body-input" style="min-height:180px;resize:vertical;line-height:1.7;font-size:14px" placeholder="Write your note here&hellip;"></textarea></div>
+    <div class="form-group">
+      <label>Tags <span style="color:var(--text3);font-weight:400;text-transform:none;letter-spacing:0">(press Enter)</span></label>
+      <input type="text" id="note-tag-input" placeholder="e.g. budget, reminder&hellip;" onkeydown="handleTagInput(event)">
+      <div class="tag-pills" id="note-tag-pills"></div>
+    </div>
+    <div class="form-group"><label>Color</label>
+      <div class="color-swatches" id="note-color-swatches">
+        <div class="swatch selected" data-color="" style="background:var(--surface2);border-color:var(--border2)" onclick="selectNoteColor(this,'')"></div>
+        <div class="swatch" data-color="#1a2e1f" style="background:#1a2e1f" onclick="selectNoteColor(this,'#1a2e1f')"></div>
+        <div class="swatch" data-color="#1e1a2e" style="background:#1e1a2e" onclick="selectNoteColor(this,'#1e1a2e')"></div>
+        <div class="swatch" data-color="#2e1a1a" style="background:#2e1a1a" onclick="selectNoteColor(this,'#2e1a1a')"></div>
+        <div class="swatch" data-color="#1a262e" style="background:#1a262e" onclick="selectNoteColor(this,'#1a262e')"></div>
+        <div class="swatch" data-color="#2e271a" style="background:#2e271a" onclick="selectNoteColor(this,'#2e271a')"></div>
+        <div class="swatch" data-color="#251a2e" style="background:#251a2e" onclick="selectNoteColor(this,'#251a2e')"></div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+      <input type="checkbox" id="note-pin-check" style="width:auto">
+      <label for="note-pin-check" style="font-size:13px;color:var(--text2);text-transform:none;letter-spacing:0;margin-bottom:0;font-weight:400;cursor:pointer">Pin this note</label>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeNoteModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveNote()">Save note</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================
+// STATE  (new key so old data doesn't conflict)
+// ============================================================
+const DB_KEY = 'budgetflow_ph_v4';
+function loadState() { try { return JSON.parse(localStorage.getItem(DB_KEY)) || {}; } catch { return {}; } }
+function initState(s) {
+  if (!s.banks)   s.banks   = [];
+  if (!s.entries) s.entries = [];
+  if (!s.notes)   s.notes   = [];
+  if (!s.cats)    s.cats    = {};
+  if (!s.cats.income) s.cats.income = ['Salary','Freelance','Business','Other'];
+  // Expense cats: array of {name, subs:[]}
+  // Migrate old flat string arrays to new structure
+  if (!s.cats.expense) {
+    s.cats.expense = [
+      { name: 'Fixed Expenses',     subs: ['Rent','Utilities','Insurance'] },
+      { name: 'Lifestyle Expenses', subs: ['Food','Transport','Entertainment','Shopping'] }
+    ];
+  } else if (s.cats.expense.length && typeof s.cats.expense[0] === 'string') {
+    // Migrate legacy flat array
+    s.cats.expense = [{ name: 'General', subs: s.cats.expense }];
+  }
+  return s;
+}
+let S = initState(loadState());
+function save() { localStorage.setItem(DB_KEY, JSON.stringify(S)); }
+
+// ============================================================
+// UTILS
+// ============================================================
+const php = n => '\u20B1' + Number(n||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2});
+const uid  = () => Date.now().toString(36) + Math.random().toString(36).slice(2);
+const todayStr = () => new Date().toISOString().slice(0,10);
+const esc  = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const bankName = id => { const b = S.banks.find(x=>x.id===id); return b ? b.name : ''; };
+
+function fmtDateLong(str) {
+  if (!str) return '';
+  const d = new Date(str + 'T00:00:00');
+  return d.toLocaleDateString('en-PH',{weekday:'short',month:'long',day:'numeric',year:'numeric'});
+}
+
+function toast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.borderColor = type === 'err' ? 'var(--red)' : 'var(--border2)';
+  t.classList.add('show');
+  clearTimeout(t._t);
+  t._t = setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// ============================================================
+// BANK BALANCE ENGINE
+// Each entry affects bank balances only when status is "active"
+// (received / spent / transferred).
+//
+// Income   received  → toBankId   += amount          (fee already deducted by sender, not tracked here)
+// Expense  spent     → fromBankId -= (amount + fee)  (you pay amount + fee from your account)
+// Savings  xfer'd    → fromBankId -= (amount + fee)  (total leaves source)
+//                      toBankId   += amount           (net arrives at destination; fee is lost)
+// ============================================================
+function computeBankBalance(bankId) {
+  const bank = S.banks.find(b => b.id === bankId);
+  if (!bank) return 0;
+  let bal = bank.baseBalance || 0;
+  for (const en of S.entries) {
+    const amt = en.amount || 0;
+    const fee = en.fee    || 0;
+    if (en.type === 'income' && en.status === 'received') {
+      if (en.toBankId === bankId) bal += amt;
+    } else if (en.type === 'expense' && en.status === 'spent') {
+      if (en.fromBankId === bankId) bal -= (amt + fee);
+    } else if (en.type === 'expense' && en.status === 'transferred') {
+      if (en.fromBankId === bankId) bal -= (amt + fee);
+      if (en.toBankId   === bankId) bal += amt;
+    } else if (en.type === 'savings' && en.status === 'transferred') {
+      if (en.fromBankId === bankId) bal -= (amt + fee);
+      if (en.toBankId   === bankId) bal += amt;
+    }
+  }
+  return bal;
+}
+
+// ============================================================
+// NAV
+// ============================================================
+function nav(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  const order = ['dashboard','budget','notes','categories'];
+  document.querySelectorAll('.nav-item')[order.indexOf(page)]?.classList.add('active');
+  if (page === 'dashboard')  renderDashboard();
+  if (page === 'budget')     renderBudget();
+  if (page === 'notes')      renderNotes();
+  if (page === 'categories') renderCategories();
+}
+
+// ============================================================
+// PERIOD
+// ============================================================
+let viewMode = 'weekly';
+let anchorDate = new Date(); anchorDate.setHours(0,0,0,0);
+let currentTab = 'income';
+let pieChartInst = null, bankChartInst = null;
+
+function getRange() {
+  const d = anchorDate;
+  if (viewMode === 'monthly') return [new Date(d.getFullYear(),d.getMonth(),1), new Date(d.getFullYear(),d.getMonth()+1,0)];
+  const day = d.getDay();
+  const mon = new Date(d); mon.setDate(d.getDate() - (day===0 ? 6 : day-1));
+  const end = new Date(mon); end.setDate(mon.getDate() + (viewMode==='biweekly' ? 13 : 6));
+  return [mon, end];
+}
+function fmtRangeLabel() {
+  const [s,e] = getRange();
+  if (viewMode === 'monthly') return s.toLocaleDateString('en-PH',{month:'long',year:'numeric'});
+  const o = {month:'short',day:'numeric',year:'numeric'};
+  return s.toLocaleDateString('en-PH',o) + ' \u2013 ' + e.toLocaleDateString('en-PH',o);
+}
+function inRange(str) {
+  if (!str) return false;
+  const d = new Date(str+'T00:00:00');
+  const [s,e] = getRange();
+  return d >= s && d <= e;
+}
+function setPeriod(mode, btn) {
+  viewMode = mode;
+  document.querySelectorAll('.ptog-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderBudget();
+}
+function shiftPeriod(dir) {
+  if (viewMode === 'weekly')    anchorDate.setDate(anchorDate.getDate() + dir * 7);
+  else if (viewMode==='biweekly') anchorDate.setDate(anchorDate.getDate() + dir * 14);
+  else anchorDate.setMonth(anchorDate.getMonth() + dir);
+  renderBudget();
+}
+function goToday() { anchorDate = new Date(); anchorDate.setHours(0,0,0,0); renderBudget(); }
+
+// ============================================================
+// BANK ACCOUNTS — CRUD
+// ============================================================
+let editingBankId = null;
+
+function bankSelectOpts(noneLabel) {
+  return `<option value="">${esc(noneLabel)}</option>` +
+    S.banks.map(b => `<option value="${b.id}">${esc(b.name)} (${esc(b.bank||'Account')})</option>`).join('');
+}
+
+function refreshBankSelects() {
+  const sets = [
+    ['en-to-bank-income',    '— No bank —'],
+    ['en-from-bank-expense', '— No bank —'],
+    ['en-to-bank-expense',   '— Destination bank —'],
+    ['en-from-bank-savings', '— From (source) —'],
+    ['en-to-bank-savings',   '— To (destination) —']
+  ];
+  sets.forEach(([id, lbl]) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const cur = el.value;
+    el.innerHTML = bankSelectOpts(lbl);
+    el.value = cur;
+  });
+}
+
+function openBankModal(id) {
+  editingBankId = id || null;
+  if (id) {
+    const b = S.banks.find(x=>x.id===id);
+    document.getElementById('bank-modal-title').textContent = 'Edit Bank Account';
+    document.getElementById('bk-name').value    = b.name;
+    document.getElementById('bk-bank').value    = b.bank;
+    document.getElementById('bk-desc').value    = b.desc || '';
+    document.getElementById('bk-balance').value = b.baseBalance || 0;
+    document.getElementById('bk-goal').value    = b.goal || '';
+    document.getElementById('bk-date').value    = b.date || todayStr();
+    document.getElementById('bk-color').value   = b.color || 'var(--accent)';
+  } else {
+    document.getElementById('bank-modal-title').textContent = 'Add Bank Account';
+    ['bk-name','bk-bank','bk-desc','bk-balance','bk-goal'].forEach(i => document.getElementById(i).value='');
+    document.getElementById('bk-date').value  = todayStr();
+    document.getElementById('bk-color').value = 'var(--accent)';
+  }
+  document.getElementById('bank-modal').classList.add('open');
+}
+function closeBankModal() { document.getElementById('bank-modal').classList.remove('open'); }
+
+function saveBankAccount() {
+  const name = document.getElementById('bk-name').value.trim();
+  if (!name) { toast('Account name required.','err'); return; }
+  const obj = {
+    name, bank: document.getElementById('bk-bank').value.trim(),
+    desc: document.getElementById('bk-desc').value.trim(),
+    baseBalance: parseFloat(document.getElementById('bk-balance').value) || 0,
+    goal: parseFloat(document.getElementById('bk-goal').value) || 0,
+    date: document.getElementById('bk-date').value || todayStr(),
+    color: document.getElementById('bk-color').value
+  };
+  if (editingBankId) Object.assign(S.banks.find(x=>x.id===editingBankId), obj);
+  else S.banks.push({ id: uid(), ...obj });
+  save(); closeBankModal(); refreshBankSelects(); renderDashboard(); toast('Bank account saved!');
+}
+
+function deleteBank(id) {
+  if (!confirm('Delete this bank account? Entries linked to it will lose their bank link.')) return;
+  S.entries.forEach(en => {
+    if (en.fromBankId === id) en.fromBankId = '';
+    if (en.toBankId   === id) en.toBankId   = '';
+  });
+  S.banks = S.banks.filter(b => b.id !== id);
+  save(); refreshBankSelects(); renderDashboard();
+}
+
+// ============================================================
+// DASHBOARD RENDER
+// ============================================================
+function renderDashboard() {
+  const totBal  = S.banks.reduce((s,b) => s + computeBankBalance(b.id), 0);
+  const totGoal = S.banks.reduce((s,b) => s + (b.goal||0), 0);
+  document.getElementById('dash-metrics').innerHTML = `
+    <div class="metric"><div class="m-label">Total balance (live)</div><div class="m-val m-green">${php(totBal)}</div><div class="m-sub">${S.banks.length} accounts tracked</div></div>
+    <div class="metric"><div class="m-label">Total goal</div><div class="m-val m-gold">${php(totGoal)}</div><div class="m-sub">${totGoal>0?Math.round(totBal/totGoal*100)+'% achieved':'No goal set'}</div></div>
+  `;
+
+  const grid = document.getElementById('bank-cards-grid');
+  if (!S.banks.length) {
+    grid.innerHTML = '<div class="empty-state">No bank accounts yet. Click &ldquo;+ Add Bank Account&rdquo; to start.</div>';
+  } else {
+    grid.innerHTML = S.banks.map(b => {
+      const eff = computeBankBalance(b.id);
+      const pct = b.goal ? Math.min(100, Math.round(eff/b.goal*100)) : 0;
+      // compute in/out from entries
+      const inc = S.entries.filter(e=>e.type==='income' && e.status==='received' && e.toBankId===b.id).reduce((s,e)=>s+(e.amount||0),0);
+      const exp = S.entries.filter(e=>e.type==='expense' && (e.status==='spent'||e.status==='transferred') && e.fromBankId===b.id).reduce((s,e)=>s+(e.amount||0)+(e.fee||0),0);
+      const savOut = S.entries.filter(e=>e.type==='savings' && e.status==='transferred' && e.fromBankId===b.id).reduce((s,e)=>s+(e.amount||0)+(e.fee||0),0);
+      const savIn  = S.entries.filter(e=>e.type==='savings' && e.status==='transferred' && e.toBankId===b.id).reduce((s,e)=>s+(e.amount||0),0);
+      return `<div class="bank-card" draggable="true" data-id="${b.id}"
+        ondragstart="onDragStart(event,'${b.id}')"
+        ondragover="onDragOver(event)"
+        ondragleave="onDragLeave(event)"
+        ondrop="onDrop(event,'${b.id}')"
+        ondragend="onDragEnd(event)">
+        <div class="drag-handle"><span></span><span></span><span></span></div>
+        <div class="bc-inst" style="color:${b.color}">${esc(b.bank||'Account')} &middot; ${esc(b.name)}</div>
+        <div class="bc-amount">${php(eff)}</div>
+        <div class="bc-base">Starting balance: ${php(b.baseBalance||0)}</div>
+        <div class="bc-desc">${esc(b.desc||'\u2014')}${b.goal?' &middot; Goal: '+php(b.goal):''}</div>
+        <div class="bc-delta">
+          <span style="color:var(--green)">+${php(inc+savIn)} in</span>
+          <span style="color:var(--red)">&minus;${php(exp+savOut)} out</span>
+        </div>
+        ${b.goal?`<div class="prog-wrap"><div class="prog-bar" style="width:${pct}%;background:${b.color}"></div></div>
+        <div style="font-size:11px;color:var(--text3);margin-top:4px">${pct}% of goal</div>`:''}
+        <div style="font-size:11px;color:var(--text3);margin-top:8px">Updated: ${fmtDateLong(b.date)}</div>
+        <div class="bc-actions">
+          <button class="btn btn-ghost btn-sm" onclick="openBankModal('${b.id}')">Edit</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteBank('${b.id}')">Remove</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // Snapshot this week
+  const now = new Date(), day = now.getDay();
+  const mon = new Date(now); mon.setDate(now.getDate()-(day===0?6:day-1));
+  const sun = new Date(mon); sun.setDate(mon.getDate()+6);
+  const inW = str => { if(!str)return false; const d=new Date(str+'T00:00:00'); return d>=mon&&d<=sun; };
+  const si = S.entries.filter(e=>e.type==='income' && inW(e.date)).reduce((s,e)=>s+(e.amount||0),0);
+  const se = S.entries.filter(e=>e.type==='expense' && inW(e.date)).reduce((s,e)=>s+(e.amount||0)+(e.fee||0),0);
+  const ss = S.entries.filter(e=>e.type==='savings' && inW(e.date)).reduce((s,e)=>s+(e.amount||0),0);
+  const fd = d => d.toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'});
+  document.getElementById('dash-snap').innerHTML = `
+    <div style="font-size:12px;color:var(--text3);margin-bottom:12px">This week &middot; ${fd(mon)} &ndash; ${fd(sun)}</div>
+    <div style="display:flex;justify-content:space-between;padding:9px 12px;background:var(--surface3);border-radius:8px;margin-bottom:6px;font-size:13px"><span>Income</span><span class="m-green">${php(si)}</span></div>
+    <div style="display:flex;justify-content:space-between;padding:9px 12px;background:var(--surface3);border-radius:8px;margin-bottom:6px;font-size:13px"><span>Expenses</span><span style="color:var(--red)">${php(se)}</span></div>
+    <div style="display:flex;justify-content:space-between;padding:9px 12px;background:var(--surface3);border-radius:8px;margin-bottom:6px;font-size:13px"><span>Savings</span><span style="color:var(--purple)">${php(ss)}</span></div>
+    <div style="display:flex;justify-content:space-between;padding:14px;background:var(--surface2);border-radius:var(--r);margin-top:8px;font-weight:600"><span>Remaining</span><span style="color:${si-se-ss>=0?'var(--green)':'var(--red)'}">${php(si-se-ss)}</span></div>
+    <button class="btn btn-ghost btn-sm" style="margin-top:12px;width:100%" onclick="nav('budget')">View full budget &rarr;</button>
+  `;
+
+  // Bank chart
+  if (bankChartInst) { bankChartInst.destroy(); bankChartInst=null; }
+  if (S.banks.length) {
+    bankChartInst = new Chart(document.getElementById('bankChart'), {
+      type: 'bar',
+      data: {
+        labels: S.banks.map(b=>b.name),
+        datasets: [
+          { label:'Balance', data:S.banks.map(b=>computeBankBalance(b.id)), backgroundColor:S.banks.map(b=>b.color||'var(--accent)'), borderRadius:6, barPercentage:.55 },
+          { label:'Goal',    data:S.banks.map(b=>b.goal||0), backgroundColor:'rgba(255,255,255,.05)', borderRadius:6, barPercentage:.55 }
+        ]
+      },
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ y:{ticks:{callback:v=>'\u20B1'+v.toLocaleString(),color:'#555B73'},grid:{color:'rgba(255,255,255,.04)'}}, x:{grid:{display:false},ticks:{color:'#555B73'}} } }
+    });
+  }
+}
+
+// ============================================================
+// ENTRY MODAL
+// ============================================================
+let editingEntryId = null;
+const ST_INCOME  = ['pending','received'];
+const ST_EXPENSE = ['pending','spent','transferred'];
+const ST_SAVINGS = ['pending','transferred'];
+
+function badgeClass(type, status) {
+  if (status==='received'||status==='transferred') return 'b-green';
+  if (status==='spent') return 'b-blue';
+  return 'b-gold';
+}
+function nextStatus(type, cur) {
+  const arr = type==='income'?ST_INCOME : type==='expense'?ST_EXPENSE : ST_SAVINGS;
+  return arr[(arr.indexOf(cur)+1)%arr.length];
+}
+
+function onTypeChange() {
+  const type = document.getElementById('en-type').value;
+  const isSavings = type === 'savings';
+  const isExpense = type === 'expense';
+
+  // Hide category + name for savings
+  document.getElementById('cat-group').style.display    = isSavings ? 'none' : '';
+  document.getElementById('name-group').style.display   = (isSavings || isExpense) ? 'none' : '';
+  document.getElementById('subcat-group').style.display = 'none'; // shown by onMainCatChange for expense
+
+  // Populate main category dropdown
+  if (isExpense) {
+    const groups = S.cats.expense || [];
+    document.getElementById('en-cat').innerHTML = groups.length
+      ? groups.map(g => `<option value="${esc(g.name)}">${esc(g.name)}</option>`).join('')
+      : '<option value="">No categories — add in Categories page</option>';
+    onMainCatChange(); // populate sub-cat
+  } else {
+    const cats = S.cats[type] || [];
+    document.getElementById('en-cat').innerHTML = cats.length
+      ? cats.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('')
+      : '<option value="">No categories</option>';
+  }
+
+  // Status options
+  const statuses = type==='income'?ST_INCOME : type==='expense'?ST_EXPENSE : ST_SAVINGS;
+  document.getElementById('en-status').innerHTML = statuses.map(s=>`<option value="${s}">${s.charAt(0).toUpperCase()+s.slice(1)}</option>`).join('');
+
+  // Bank fields visibility
+  document.getElementById('bank-income-row').style.display   = type==='income'  ? '' : 'none';
+  document.getElementById('bank-expense-row').style.display  = isExpense        ? '' : 'none';
+  document.getElementById('bank-savings-rows').style.display = isSavings        ? '' : 'none';
+
+  if (isExpense) updateExpenseTransferUI();
+
+  // Refresh bank options
+  refreshBankSelects();
+  updateTransferPreview();
+}
+
+function onMainCatChange() {
+  const mainCat = document.getElementById('en-cat').value;
+  const group   = (S.cats.expense || []).find(g => g.name === mainCat);
+  const subs    = group ? group.subs : [];
+  const subcatEl = document.getElementById('en-subcat');
+  const subcatGroup = document.getElementById('subcat-group');
+  if (subs.length) {
+    subcatEl.innerHTML = subs.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
+    subcatGroup.style.display = '';
+  } else {
+    subcatEl.innerHTML = '<option value="">No sub-categories</option>';
+    subcatGroup.style.display = 'none';
+  }
+}
+
+function updateTransferPreview() {
+  const type = document.getElementById('en-type').value;
+  if (type !== 'savings') return;
+  const fromId = document.getElementById('en-from-bank-savings').value;
+  const toId   = document.getElementById('en-to-bank-savings').value;
+  const prev   = document.getElementById('transfer-preview');
+  const fn = fromId ? bankName(fromId) : '?';
+  const tn = toId   ? bankName(toId)   : '?';
+  if (fromId || toId) {
+    prev.style.display = 'flex';
+    prev.innerHTML = `<span>${esc(fn)}</span><span class="arrow">&rarr;</span><span>${esc(tn)}</span><span style="color:var(--text3);margin-left:8px">Amount arrives at destination; fee stays at source</span>`;
+  } else {
+    prev.style.display = 'none';
+  }
+  // Auto-set entry name = destination bank name (editable fallback stored internally)
+  if (toId) document.getElementById('en-name').value = tn;
+}
+
+// Attach live preview listener after DOM ready
+['en-from-bank-savings','en-to-bank-savings'].forEach(id => {
+  document.getElementById(id)?.addEventListener('change', updateTransferPreview);
+});
+
+function updateExpenseTransferUI() {
+  const status  = document.getElementById('en-status').value;
+  const isXfer  = status === 'transferred';
+  document.getElementById('expense-to-bank-group').style.display = isXfer ? '' : 'none';
+  const prev = document.getElementById('expense-transfer-preview');
+  if (isXfer) {
+    const fromId = document.getElementById('en-from-bank-expense').value;
+    const toId   = document.getElementById('en-to-bank-expense').value;
+    const fn = fromId ? bankName(fromId) : '?';
+    const tn = toId   ? bankName(toId)   : '?';
+    if (fromId || toId) {
+      prev.style.display = 'flex';
+      prev.innerHTML = `<span>${esc(fn)}</span><span class="arrow">&rarr;</span><span>${esc(tn)}</span><span style="color:var(--text3);margin-left:8px">Amount arrives at destination; fee stays at source</span>`;
+    } else {
+      prev.style.display = 'none';
+    }
+  } else {
+    prev.style.display = 'none';
+  }
+}
+
+// Attach expense status + bank change listeners
+document.getElementById('en-status').addEventListener('change', () => {
+  if (document.getElementById('en-type').value === 'expense') updateExpenseTransferUI();
+});
+['en-from-bank-expense','en-to-bank-expense'].forEach(id => {
+  document.getElementById(id)?.addEventListener('change', updateExpenseTransferUI);
+});
+
+function openEntryModal(id) {
+  editingEntryId = id || null;
+  if (id) {
+    const en = S.entries.find(x=>x.id===id);
+    document.getElementById('entry-modal-title').textContent = 'Edit Entry';
+    document.getElementById('en-type').value   = en.type;
+    if (en.type !== 'expense' && en.type !== 'savings') {
+      document.getElementById('en-name').value = en.name;
+    }
+    document.getElementById('en-amount').value = en.amount;
+    document.getElementById('en-fee').value    = en.fee || '';
+    document.getElementById('en-date').value   = en.date;
+    document.getElementById('en-notes').value  = en.notes || '';
+    onTypeChange();
+    document.getElementById('en-cat').value    = en.cat || '';
+    document.getElementById('en-status').value = en.status;
+    if (en.type === 'expense') {
+      onMainCatChange();
+      document.getElementById('en-subcat').value = en.subcat || '';
+    }
+    if (en.type === 'income')  document.getElementById('en-to-bank-income').value    = en.toBankId   || '';
+    if (en.type === 'expense') {
+      document.getElementById('en-from-bank-expense').value = en.fromBankId || '';
+      document.getElementById('en-to-bank-expense').value   = en.toBankId   || '';
+      updateExpenseTransferUI();
+    }
+    if (en.type === 'savings') {
+      document.getElementById('en-from-bank-savings').value = en.fromBankId || '';
+      document.getElementById('en-to-bank-savings').value   = en.toBankId   || '';
+      updateTransferPreview();
+    }
+  } else {
+    document.getElementById('entry-modal-title').textContent = 'Add Entry';
+    const defaultType = currentTab==='savings'?'savings' : currentTab==='expenses'?'expense' : 'income';
+    document.getElementById('en-type').value = defaultType;
+    ['en-name','en-amount','en-fee','en-notes'].forEach(i => document.getElementById(i).value='');
+    document.getElementById('en-date').value = todayStr();
+    onTypeChange();
+  }
+  document.getElementById('entry-modal').classList.add('open');
+}
+function closeEntryModal() { document.getElementById('entry-modal').classList.remove('open'); }
+
+function openEntryModalForSub(mainCat, subCat) {
+  openEntryModal();
+  document.getElementById('en-type').value = 'expense';
+  onTypeChange();
+  document.getElementById('en-cat').value = mainCat;
+  onMainCatChange();
+  document.getElementById('en-subcat').value = subCat;
+}
+
+function openEntryModalForBank(toBankId) {
+  openEntryModal();
+  document.getElementById('en-type').value = 'savings';
+  onTypeChange();
+  // Pre-fill destination bank
+  document.getElementById('en-to-bank-savings').value = toBankId;
+  updateTransferPreview();
+}
+
+function saveEntry() {
+  const type   = document.getElementById('en-type').value;
+  const amount = parseFloat(document.getElementById('en-amount').value);
+  const isSavings = type === 'savings';
+  const isExpense = type === 'expense';
+
+  // Name is auto-derived for savings (destination bank) and expenses (sub-category or main category)
+  let name;
+  if (isSavings) {
+    const toBankIdSav = document.getElementById('en-to-bank-savings').value;
+    name = toBankIdSav ? bankName(toBankIdSav) : 'Savings Transfer';
+  } else if (isExpense) {
+    const subVal = document.getElementById('en-subcat').value;
+    const catVal = document.getElementById('en-cat').value;
+    name = subVal || catVal || 'Expense';
+  } else {
+    name = document.getElementById('en-name').value.trim();
+  }
+
+  if (!name || isNaN(amount) || amount <= 0) { toast('Please fill in all required fields.','err'); return; }
+
+  const obj = {
+    type, name, amount,
+    fee:        parseFloat(document.getElementById('en-fee').value) || 0,
+    date:       document.getElementById('en-date').value || todayStr(),
+    cat:        isSavings ? '' : document.getElementById('en-cat').value,
+    subcat:     (type==='expense') ? document.getElementById('en-subcat').value : '',
+    status:     document.getElementById('en-status').value,
+    notes:      document.getElementById('en-notes').value.trim(),
+    fromBankId: '',
+    toBankId:   ''
+  };
+
+  if (type === 'income')  obj.toBankId   = document.getElementById('en-to-bank-income').value;
+  if (type === 'expense') {
+    obj.fromBankId = document.getElementById('en-from-bank-expense').value;
+    obj.toBankId   = document.getElementById('en-to-bank-expense').value;
+  }
+  if (isSavings) {
+    obj.fromBankId = document.getElementById('en-from-bank-savings').value;
+    obj.toBankId   = document.getElementById('en-to-bank-savings').value;
+  }
+
+  if (editingEntryId) Object.assign(S.entries.find(x=>x.id===editingEntryId), obj);
+  else S.entries.push({ id: uid(), ...obj });
+
+  save(); closeEntryModal(); renderBudget(); renderDashboard(); toast('Entry saved!');
+}
+
+function deleteEntry(id) {
+  S.entries = S.entries.filter(e => e.id !== id);
+  save(); renderBudget(); renderDashboard();
+}
+
+function toggleEntryStatus(id) {
+  const en = S.entries.find(x=>x.id===id);
+  if (!en) return;
+  en.status = nextStatus(en.type, en.status);
+  save(); renderBudget(); renderDashboard();
+}
+
+// ============================================================
+// BUDGET RENDER
+// ============================================================
+function setTab(tab, btn) {
+  currentTab = tab;
+  document.querySelectorAll('.stab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.tab-content').forEach(t=>t.style.display='none');
+  document.getElementById('tab-' + (tab==='expenses'?'expenses':tab)).style.display = 'block';
+}
+
+function renderBudget() {
+  document.getElementById('date-display').textContent = fmtRangeLabel();
+  document.getElementById('budget-sub').textContent = 'Budget for ' + fmtRangeLabel();
+
+  const inc = S.entries.filter(e=>e.type==='income'  && inRange(e.date));
+  const exp = S.entries.filter(e=>e.type==='expense' && inRange(e.date));
+  const sav = S.entries.filter(e=>e.type==='savings' && inRange(e.date));
+
+  const total = arr => arr.reduce((s,e) => s+(e.amount||0)+(e.fee||0), 0);
+  const ti=total(inc), te=total(exp), ts=total(sav), rem=ti-te-ts;
+
+  document.getElementById('total-strip').innerHTML = `
+    <div class="ts-item"><div class="ts-label">Income</div><div class="ts-val m-green">${php(ti)}</div></div>
+    <div class="ts-item"><div class="ts-label">Expenses</div><div class="ts-val" style="color:var(--red)">${php(te)}</div></div>
+    <div class="ts-item"><div class="ts-label">Savings</div><div class="ts-val" style="color:var(--purple)">${php(ts)}</div></div>
+    <div class="ts-item"><div class="ts-label">Remaining</div><div class="ts-val" style="color:${rem>=0?'var(--green)':'var(--red)'}">${php(rem)}</div></div>
+  `;
+  document.getElementById('remaining-amt').textContent = php(rem);
+  document.getElementById('remaining-amt').style.color = rem>=0?'var(--green)':'var(--red)';
+  document.getElementById('remaining-sub').textContent = `${php(ti)} income \u2212 ${php(te)} expenses \u2212 ${php(ts)} savings`;
+
+  if (pieChartInst) { pieChartInst.destroy(); pieChartInst=null; }
+  const pv = [te, ts, Math.max(0,rem)];
+  if (pv.some(v=>v>0)) {
+    pieChartInst = new Chart(document.getElementById('pieChart'), {
+      type:'doughnut',
+      data:{ labels:['Expenses','Savings','Remaining'], datasets:[{data:pv,backgroundColor:['#F87171','#A78BFA','#22C55E'],borderWidth:0,hoverOffset:4}] },
+      options:{ responsive:true, maintainAspectRatio:false, cutout:'60%', plugins:{
+        tooltip:{ callbacks:{ label:ctx=>{ const t=ctx.dataset.data.reduce((a,b)=>a+b,0); return ' '+ctx.label+': '+(t>0?Math.round(ctx.parsed/t*100):0)+'%'; }}},
+        legend:{ position:'bottom', labels:{ color:'#8B90A8', font:{size:11}, boxWidth:10, padding:10 }}
+      }}
+    });
+  }
+
+  renderSectionTable('income',  inc, ti, 'tab-income');
+  renderSectionTable('expense', exp, te, 'tab-expenses');
+  renderSectionTable('savings', sav, ts, 'tab-savings');
+}
+
+function buildEntryRow(en, type, tColor) {
+  const bc    = badgeClass(en.type, en.status);
+  const amt   = en.amount || 0;
+  const fee   = en.fee    || 0;
+  const total = amt + fee;
+  let bankDisplay = '';
+  if (type==='income')  bankDisplay = en.toBankId ? esc(bankName(en.toBankId)) : '<span style="color:var(--text3)">—</span>';
+  if (type==='expense') {
+    if (en.status==='transferred' && (en.fromBankId||en.toBankId)) {
+      bankDisplay = `${en.fromBankId?esc(bankName(en.fromBankId)):'?'} <span style="color:var(--accent2)">&rarr;</span> ${en.toBankId?esc(bankName(en.toBankId)):'?'}`;
+    } else {
+      bankDisplay = en.fromBankId ? esc(bankName(en.fromBankId)) : '<span style="color:var(--text3)">—</span>';
+    }
+  }
+  if (type==='savings') {
+    bankDisplay = `${en.fromBankId?esc(bankName(en.fromBankId)):'?'} <span style="color:var(--accent2)">&rarr;</span> ${en.toBankId?esc(bankName(en.toBankId)):'?'}`;
+  }
+  let html = `<tr>
+    <td><strong>${esc(en.name)}</strong>${en.notes?`<div style="font-size:11px;color:var(--text3);margin-top:2px">${esc(en.notes)}</div>`:''}</td>
+    <td style="font-size:12px">${bankDisplay}</td>
+    <td style="font-weight:500;color:${tColor}">${php(total)}</td>
+    <td style="color:var(--text3);font-size:12px">${fmtDateLong(en.date)}</td>
+    <td><span class="badge ${bc}" onclick="toggleEntryStatus('${en.id}')" title="Click to change">${en.status}</span></td>
+    <td><div style="display:flex;gap:4px">
+      <button class="btn btn-ghost btn-xs" onclick="openEntryModal('${en.id}')">Edit</button>
+      <button class="btn btn-danger btn-xs" onclick="deleteEntry('${en.id}')">&#10005;</button>
+    </div></td>
+  </tr>`;
+  if (fee > 0) {
+    html += `<tr class="sub-row"><td colspan="2">&nbsp;&nbsp;&rarr; Transfer / bank fee</td><td style="color:var(--text3)">${php(fee)}</td><td colspan="3" style="color:var(--text3);font-size:11px">Deducted from source account</td></tr>`;
+  }
+  return html;
+}
+
+function renderSectionTable(type, entries, sectionTotal, wrapperId) {
+  const wrap = document.getElementById(wrapperId);
+  const label = type==='income'?'Income':type==='expense'?'Expenses':'Savings';
+  const tColor = type==='income'?'var(--green)':type==='expense'?'var(--red)':'var(--purple)';
+
+  // For savings group by fromBank; for expenses two-level (cat > subcat); for income by cat
+  const groupKey = en => {
+    if (type==='savings') return bankName(en.fromBankId) || 'Unlinked';
+    return en.cat || 'Uncategorized';
+  };
+
+  // Early empty state only for income (expense and savings always render their template)
+  if (!entries.length && type === 'income') {
+    wrap.innerHTML = `
+      <div class="section-header-bar"><span class="sh-title">${label}</span><span class="sh-total" style="color:${tColor}">${php(0)}</span></div>
+      <div class="table-card"><div class="empty-state">No income entries for this period.
+      <br><button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="openEntryModal()">+ Add entry</button></div></div>`;
+    return;
+  }
+
+  let rows = '', grand = 0, catSummaries = [];
+
+  if (type === 'expense') {
+    const groups = S.cats.expense || [];
+    const knownMainCats = groups.map(g => g.name);
+    const orphanEntries = entries.filter(en => !knownMainCats.includes(en.cat||''));
+
+    groups.forEach(group => {
+      const mainEntries = entries.filter(en => (en.cat||'') === group.name);
+      const mainTotal   = mainEntries.reduce((s,e) => s+(e.amount||0)+(e.fee||0), 0);
+      grand += mainTotal;
+      if (mainTotal > 0) catSummaries.push(`${esc(group.name)}: ${php(mainTotal)}`);
+
+      // ── MAIN CATEGORY HEADER ROW ──────────────────────────────────────
+      rows += `<tr><td colspan="6" style="background:var(--surface2);padding:10px 16px;border-bottom:1px solid var(--border)">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <span style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text2)">${esc(group.name)}</span>
+          <div style="display:flex;align-items:center;gap:10px">
+            ${mainTotal > 0 ? `<span style="font-size:13px;font-weight:600;color:var(--red)">${php(mainTotal)}</span>` : ''}
+            <button class="btn btn-ghost btn-xs" onclick="openEntryModalForSub('${esc(group.name)}','')">+ Add</button>
+          </div>
+        </div>
+      </td></tr>`;
+
+      const knownSubs = group.subs || [];
+
+      // Entries that match this group (flat, no sub-header)
+      mainEntries.forEach(en => rows += buildEntryRow(en, type, tColor));
+
+      // Sub-categories with NO entries → show as placeholder reminder rows
+      knownSubs.forEach(sub => {
+        const hasEntry = mainEntries.some(en => (en.subcat||'') === sub);
+        if (!hasEntry) {
+          rows += `<tr style="opacity:.6">
+            <td style="padding:9px 16px;color:var(--text3);font-size:13px">${esc(sub)}</td>
+            <td colspan="4" style="padding:9px 12px;color:var(--text3);font-size:12px;font-style:italic">no entries</td>
+            <td style="padding:9px 12px">
+              <button class="btn btn-ghost btn-xs" onclick="openEntryModalForSub('${esc(group.name)}','${esc(sub)}')">+ Add</button>
+            </td>
+          </tr>`;
+        }
+      });
+
+      // Main total — only if entries exist
+      if (mainTotal > 0) {
+        rows += `<tr style="background:var(--surface2)"><td colspan="2" style="padding:8px 16px;font-size:12px;font-weight:600;color:var(--text2)">Total &middot; ${esc(group.name)}</td><td colspan="4" style="padding:8px 16px 8px 12px;text-align:right;font-weight:700;color:var(--red)">${php(mainTotal)}</td></tr>`;
+      }
+    });
+
+    // Orphan entries (cat not in any defined group)
+    if (orphanEntries.length) {
+      const oTotal = orphanEntries.reduce((s,e) => s+(e.amount||0)+(e.fee||0), 0);
+      grand += oTotal;
+      rows += `<tr><td colspan="6" style="background:var(--surface2);padding:10px 16px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text3);border-bottom:1px solid var(--border)">Other</td></tr>`;
+      orphanEntries.forEach(en => rows += buildEntryRow(en, type, tColor));
+    }
+
+  } else if (type === 'savings') {
+    // Always show all bank accounts as headers (grouped by destination bank - toBankId)
+    // so users see their savings targets even with no entries yet
+    const knownBankIds = S.banks.map(b => b.id);
+    const orphanEntries = entries.filter(en => !knownBankIds.includes(en.toBankId||''));
+
+    S.banks.forEach(bank => {
+      const bankEntries = entries.filter(en => en.toBankId === bank.id);
+      const bankTotal   = bankEntries.reduce((s,e) => s+(e.amount||0), 0);
+      grand += bankTotal;
+      if (bankTotal > 0) catSummaries.push(`${esc(bank.name)}: ${php(bankTotal)}`);
+
+      // Bank header row — always shown
+      rows += `<tr><td colspan="6" style="background:var(--surface2);padding:10px 16px;border-bottom:1px solid var(--border)">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="width:8px;height:8px;border-radius:50%;background:${bank.color};display:inline-block;flex-shrink:0"></span>
+            <span style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text2)">${esc(bank.name)}</span>
+            <span style="font-size:11px;color:var(--text3)">(${esc(bank.bank||'Account')})</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            ${bankTotal > 0 ? `<span style="font-size:13px;font-weight:600;color:var(--purple)">${php(bankTotal)}</span>` : ''}
+            <button class="btn btn-ghost btn-xs" onclick="openEntryModalForBank('${bank.id}')">+ Add</button>
+          </div>
+        </div>
+      </td></tr>`;
+
+      if (bankEntries.length > 0) {
+        // Flat entry rows
+        bankEntries.forEach(en => rows += buildEntryRow(en, type, tColor));
+        rows += `<tr style="background:var(--surface2)"><td colspan="2" style="padding:8px 16px;font-size:12px;font-weight:600;color:var(--text2)">Total &middot; ${esc(bank.name)}</td><td colspan="4" style="padding:8px 16px 8px 12px;text-align:right;font-weight:700;color:var(--purple)">${php(bankTotal)}</td></tr>`;
+      } else {
+        // Placeholder row
+        rows += `<tr style="opacity:.6">
+          <td style="padding:9px 16px;color:var(--text3);font-size:13px">${esc(bank.name)}</td>
+          <td colspan="4" style="padding:9px 12px;color:var(--text3);font-size:12px;font-style:italic">no entries</td>
+          <td style="padding:9px 12px"><button class="btn btn-ghost btn-xs" onclick="openEntryModalForBank('${bank.id}')">+ Add</button></td>
+        </tr>`;
+      }
+    });
+
+    // Orphan entries (toBankId not in any defined bank)
+    if (orphanEntries.length) {
+      const oTotal = orphanEntries.reduce((s,e) => s+(e.amount||0), 0);
+      grand += oTotal;
+      rows += `<tr><td colspan="6" style="background:var(--surface2);padding:10px 16px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text3);border-bottom:1px solid var(--border)">Other</td></tr>`;
+      orphanEntries.forEach(en => rows += buildEntryRow(en, type, tColor));
+    }
+
+  } else {
+    // Income — single-level grouping by category
+    const cats = [...new Set(entries.map(groupKey))];
+    if (!cats.length) {
+      wrap.innerHTML = `
+        <div class="section-header-bar"><span class="sh-title">${label}</span><span class="sh-total" style="color:${tColor}">${php(0)}</span></div>
+        <div class="table-card"><div class="empty-state">No income entries for this period.
+        <br><button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="openEntryModal()">+ Add entry</button></div></div>`;
+      return;
+    }
+    cats.forEach(cat => {
+      const ces    = entries.filter(en=>groupKey(en)===cat);
+      const catTot = ces.reduce((s,e)=>s+(e.amount||0)+(e.fee||0),0);
+      grand += catTot;
+      catSummaries.push(`${esc(cat)}: ${php(catTot)}`);
+      rows += `<tr class="cat-header-row"><td colspan="7">${esc(cat)}</td></tr>`;
+      ces.forEach(en => rows += buildEntryRow(en, type, tColor));
+      rows += `<tr class="cat-total-row"><td colspan="2">Total &middot; ${esc(cat)}</td><td colspan="5" style="text-align:right;padding-right:16px;font-weight:600">${php(catTot)}</td></tr>`;
+    });
+  }
+
+  wrap.innerHTML = `
+    <div class="section-header-bar">
+      <div>
+        <span class="sh-title">${label}</span>
+        <span class="sh-cats">${catSummaries.join(' &nbsp;&middot;&nbsp; ')}</span>
+      </div>
+      <span class="sh-total" style="color:${tColor}">${php(sectionTotal)}</span>
+    </div>
+    <div class="table-card">
+      <table>
+        <thead><tr>
+          <th>Name</th>
+          <th>${type==='savings'?'From &rarr; To':type==='expense'?'Bank account':' Bank account'}</th>
+          <th>Amount</th><th>Date</th><th>Status</th><th></th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+// ============================================================
+// CATEGORIES
+// ============================================================
+function renderCategories() {
+  // Income — flat list
+  const incEl = document.getElementById('cat-income-list');
+  incEl.innerHTML = (S.cats.income||[]).map((c,i)=>`
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:var(--surface2);border-radius:7px;margin-bottom:6px;font-size:13px">
+      <span>${esc(c)}</span>
+      <button class="btn btn-danger btn-xs" onclick="deleteCat('income',${i})">&#10005;</button>
+    </div>`).join('') || '<div style="color:var(--text3);font-size:12px;padding:8px 0">No categories yet</div>';
+
+  // Expense — two-level
+  const expEl = document.getElementById('cat-expense-list');
+  const groups = S.cats.expense || [];
+  if (!groups.length) {
+    expEl.innerHTML = '<div style="color:var(--text3);font-size:12px;padding:8px 0">No expense categories yet.</div>';
+  } else {
+    expEl.innerHTML = groups.map((g, gi) => `
+      <div style="border:1px solid var(--border);border-radius:var(--r-lg);margin-bottom:14px;overflow:hidden">
+        <!-- Main category header -->
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--surface2);border-bottom:1px solid var(--border)">
+          <strong style="font-size:13px">${esc(g.name)}</strong>
+          <button class="btn btn-danger btn-xs" onclick="deleteExpenseMainCat(${gi})" title="Delete main category">&#10005;</button>
+        </div>
+        <!-- Sub-categories -->
+        <div style="padding:10px 14px">
+          ${(g.subs||[]).map((s,si)=>`
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:var(--surface3);border-radius:7px;margin-bottom:6px;font-size:13px">
+              <span style="color:var(--text2)">&nbsp;&nbsp;${esc(s)}</span>
+              <button class="btn btn-danger btn-xs" onclick="deleteExpenseSub(${gi},${si})">&#10005;</button>
+            </div>`).join('') || '<div style="color:var(--text3);font-size:12px;padding:4px 0 8px">No sub-categories yet</div>'}
+          <div class="cat-input-row" style="margin-top:4px">
+            <input type="text" id="sub-input-${gi}" placeholder="Add sub-category&hellip;" onkeydown="if(event.key==='Enter')addExpenseSub(${gi})">
+            <button class="btn btn-green btn-sm" onclick="addExpenseSub(${gi})">Add</button>
+          </div>
+        </div>
+      </div>`).join('');
+  }
+
+  // Savings readonly
+  document.getElementById('cat-savings-readonly').innerHTML = S.banks.length
+    ? S.banks.map(b=>`<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--surface2);border-radius:7px;margin-bottom:6px;font-size:13px"><span style="width:8px;height:8px;border-radius:50%;background:${b.color};display:inline-block;flex-shrink:0"></span>${esc(b.name)} <span style="color:var(--text3)">(${esc(b.bank||'Account')})</span></div>`).join('')
+    : '<div style="color:var(--text3);font-size:12px;padding:8px 0">Add bank accounts in the Dashboard.</div>';
+}
+
+function addCat(type) {
+  // Only for income now
+  const inp = document.getElementById('cat-income-input');
+  const val = inp.value.trim();
+  if (!val) return;
+  if (!S.cats.income) S.cats.income = [];
+  if (S.cats.income.includes(val)) { toast('Already exists.','err'); return; }
+  S.cats.income.push(val); inp.value='';
+  save(); renderCategories(); toast('Category added!');
+}
+function deleteCat(type, idx) {
+  S.cats[type].splice(idx, 1);
+  save(); renderCategories();
+}
+
+function addExpenseMainCat() {
+  const name = prompt('Main category name (e.g. Fixed Expenses):');
+  if (!name || !name.trim()) return;
+  if (!S.cats.expense) S.cats.expense = [];
+  if (S.cats.expense.find(g=>g.name===name.trim())) { toast('Already exists.','err'); return; }
+  S.cats.expense.push({ name: name.trim(), subs: [] });
+  save(); renderCategories(); toast('Main category added!');
+}
+function deleteExpenseMainCat(gi) {
+  if (!confirm('Delete this category and all its sub-categories?')) return;
+  S.cats.expense.splice(gi, 1);
+  save(); renderCategories(); toast('Category deleted.');
+}
+function addExpenseSub(gi) {
+  const inp = document.getElementById(`sub-input-${gi}`);
+  const val = inp.value.trim();
+  if (!val) return;
+  if (!S.cats.expense[gi].subs) S.cats.expense[gi].subs = [];
+  if (S.cats.expense[gi].subs.includes(val)) { toast('Already exists.','err'); return; }
+  S.cats.expense[gi].subs.push(val); inp.value='';
+  save(); renderCategories(); toast('Sub-category added!');
+}
+function deleteExpenseSub(gi, si) {
+  S.cats.expense[gi].subs.splice(si, 1);
+  save(); renderCategories();
+}
+
+// ============================================================
+// NOTES
+// ============================================================
+let editingNoteId=null, currentNoteTags=[], currentNoteColor='';
+function openNoteModal(id) {
+  editingNoteId=id||null; currentNoteTags=[]; currentNoteColor='';
+  if (id) {
+    const n=S.notes.find(x=>x.id===id);
+    document.getElementById('note-modal-title').textContent='Edit note';
+    document.getElementById('note-title-input').value=n.title;
+    document.getElementById('note-body-input').value=n.body;
+    document.getElementById('note-pin-check').checked=n.pinned||false;
+    currentNoteTags=[...(n.tags||[])]; currentNoteColor=n.color||'';
+  } else {
+    document.getElementById('note-modal-title').textContent='New note';
+    document.getElementById('note-title-input').value='';
+    document.getElementById('note-body-input').value='';
+    document.getElementById('note-pin-check').checked=false;
+  }
+  document.getElementById('note-tag-input').value='';
+  renderTagPills();
+  document.querySelectorAll('.swatch').forEach(s=>s.classList.toggle('selected',s.dataset.color===currentNoteColor));
+  document.getElementById('note-modal').classList.add('open');
+  setTimeout(()=>document.getElementById('note-title-input').focus(),100);
+}
+function closeNoteModal() { document.getElementById('note-modal').classList.remove('open'); }
+function handleTagInput(e) {
+  if (e.key!=='Enter') return; e.preventDefault();
+  const val=e.target.value.trim().toLowerCase().replace(/\s+/g,'-');
+  if (!val||currentNoteTags.includes(val)){e.target.value='';return;}
+  currentNoteTags.push(val); e.target.value=''; renderTagPills();
+}
+function removeTag(tag){currentNoteTags=currentNoteTags.filter(t=>t!==tag);renderTagPills();}
+function renderTagPills(){
+  document.getElementById('note-tag-pills').innerHTML=currentNoteTags.map(t=>`<div class="tag-pill">${esc(t)}<button onclick="removeTag('${esc(t)}')">&times;</button></div>`).join('');
+}
+function selectNoteColor(el,color){
+  currentNoteColor=color;
+  document.querySelectorAll('.swatch').forEach(s=>s.classList.remove('selected'));
+  el.classList.add('selected');
+}
+function saveNote(){
+  const title=document.getElementById('note-title-input').value.trim();
+  const body=document.getElementById('note-body-input').value.trim();
+  if (!title&&!body){toast('Write something first!','err');return;}
+  const now=new Date().toISOString();
+  const obj={title:title||'Untitled',body,tags:[...currentNoteTags],color:currentNoteColor,pinned:document.getElementById('note-pin-check').checked,updatedAt:now};
+  if (editingNoteId) Object.assign(S.notes.find(x=>x.id===editingNoteId),obj);
+  else S.notes.push({id:uid(),createdAt:now,...obj});
+  save();closeNoteModal();renderNotes();toast('Note saved!');
+}
+function deleteNote(id){if(!confirm('Delete this note?'))return;S.notes=S.notes.filter(n=>n.id!==id);save();renderNotes();}
+function togglePin(id){const n=S.notes.find(x=>x.id===id);if(n){n.pinned=!n.pinned;n.updatedAt=new Date().toISOString();}save();renderNotes();}
+function renderNotes(){
+  const q=(document.getElementById('notes-search')?.value||'').toLowerCase();
+  const tf=document.getElementById('notes-filter-tag')?.value||'';
+  const sort=document.getElementById('notes-sort')?.value||'updated';
+  const allTags=[...new Set(S.notes.flatMap(n=>n.tags||[]))].sort();
+  const tagSel=document.getElementById('notes-filter-tag');
+  const prev=tagSel.value;
+  tagSel.innerHTML='<option value="">All tags</option>'+allTags.map(t=>`<option value="${t}"${t===prev?' selected':''}>${t}</option>`).join('');
+  let notes=S.notes.filter(n=>{
+    const mq=!q||n.title.toLowerCase().includes(q)||n.body.toLowerCase().includes(q)||(n.tags||[]).some(t=>t.includes(q));
+    const mt=!tf||(n.tags||[]).includes(tf);
+    return mq&&mt;
+  });
+  const sf=sort==='title'?(a,b)=>a.title.localeCompare(b.title):sort==='created'?(a,b)=>new Date(b.createdAt)-new Date(a.createdAt):(a,b)=>new Date(b.updatedAt)-new Date(a.updatedAt);
+  notes.sort(sf);
+  const pinned=notes.filter(n=>n.pinned),rest=notes.filter(n=>!n.pinned);
+  const nHTML=n=>{
+    const bg=n.color?`background:${n.color};`:'';
+    const border=n.pinned?'border-color:var(--gold)':'';
+    const dateStr=new Date(n.updatedAt).toLocaleDateString('en-PH',{weekday:'short',month:'long',day:'numeric',year:'numeric'});
+    const tags=(n.tags||[]).map(t=>`<span class="note-tag">${esc(t)}</span>`).join('');
+    const preview=n.body.length>200?n.body.slice(0,200)+'…':n.body;
+    return `<div class="note-card${n.pinned?' pinned':''}" style="${bg}${border}" onclick="openNoteModal('${n.id}')">
+      ${n.pinned?'<span class="note-pin">\uD83D\uDCCC</span>':''}
+      <div class="note-title">${esc(n.title)}</div>
+      ${preview?`<div class="note-body">${esc(preview)}</div>`:''}
+      <div class="note-footer"><div class="note-tags">${tags}</div><span class="note-date">${dateStr}</span></div>
+      <div class="note-actions" onclick="event.stopPropagation()">
+        <button class="btn btn-ghost btn-xs" onclick="togglePin('${n.id}')">${n.pinned?'Unpin':'Pin'}</button>
+        <button class="btn btn-danger btn-xs" onclick="deleteNote('${n.id}')">Delete</button>
+      </div>
+    </div>`;
+  };
+  const ps=document.getElementById('notes-pinned-section'),gr=document.getElementById('notes-grid');
+  if (!notes.length){ps.innerHTML='';gr.innerHTML='<div class="empty-state" style="grid-column:1/-1">No notes yet. Click &ldquo;+ New Note&rdquo; to start.</div>';return;}
+  ps.innerHTML=pinned.length?`<div class="notes-section-title">\uD83D\uDCCC Pinned</div><div class="notes-grid" style="margin-bottom:24px">${pinned.map(nHTML).join('')}</div>`:'';
+  gr.innerHTML=rest.length?(pinned.length?'<div class="notes-section-title">Notes</div>':'')+rest.map(nHTML).join(''):'';
+}
+
+// ============================================================
+// DRAG & DROP — bank card reordering
+// ============================================================
+let dragSrcId = null;
+
+function onDragStart(e, id) {
+  dragSrcId = id;
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', id);
+  // slight delay so the card renders before going semi-transparent
+  setTimeout(() => e.target.classList.add('dragging'), 0);
+}
+
+function onDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  const card = e.currentTarget;
+  if (card.dataset.id !== dragSrcId) card.classList.add('drag-over');
+}
+
+function onDragLeave(e) {
+  e.currentTarget.classList.remove('drag-over');
+}
+
+function onDrop(e, targetId) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+  if (!dragSrcId || dragSrcId === targetId) return;
+  const fromIdx = S.banks.findIndex(b => b.id === dragSrcId);
+  const toIdx   = S.banks.findIndex(b => b.id === targetId);
+  if (fromIdx < 0 || toIdx < 0) return;
+  // Reorder
+  const [moved] = S.banks.splice(fromIdx, 1);
+  S.banks.splice(toIdx, 0, moved);
+  save();
+  renderDashboard();
+}
+
+function onDragEnd(e) {
+  dragSrcId = null;
+  document.querySelectorAll('.bank-card').forEach(c => {
+    c.classList.remove('dragging', 'drag-over');
+  });
+}
+
+// ============================================================
+// INIT
+// ============================================================
+document.getElementById('sidebar-date').textContent = new Date().toLocaleDateString('en-PH',{weekday:'short',month:'long',day:'numeric',year:'numeric'});
+// attach savings bank change listeners
+document.getElementById('en-from-bank-savings').addEventListener('change', updateTransferPreview);
+document.getElementById('en-to-bank-savings').addEventListener('change', updateTransferPreview);
+refreshBankSelects();
+renderDashboard();
+renderBudget();
+</script>
+</body>
+</html>
