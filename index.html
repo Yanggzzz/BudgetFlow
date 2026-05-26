@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>BudgetFlow PH</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600&family=Playfair+Display:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -23,7 +24,21 @@
 }
 body{font-family:'Sora',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;line-height:1.6}
 ::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
-.app{display:flex;height:100vh;overflow:hidden}
+
+/* AUTH SCREEN */
+.auth-wrap{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
+.auth-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);padding:40px 36px;width:100%;max-width:400px}
+.auth-logo{font-family:'Playfair Display',serif;font-size:28px;font-weight:400;margin-bottom:6px}
+.auth-sub{font-size:13px;color:var(--text3);margin-bottom:28px}
+.auth-tabs{display:flex;border-bottom:1px solid var(--border);margin-bottom:24px}
+.auth-tab{padding:8px 20px;font-size:13px;cursor:pointer;border:none;background:transparent;color:var(--text3);font-family:'Sora',sans-serif;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s}
+.auth-tab.active{color:var(--accent2);border-bottom-color:var(--accent)}
+.auth-err{background:var(--red-bg);color:var(--red);padding:10px 14px;border-radius:var(--r);font-size:13px;margin-bottom:14px;display:none}
+.auth-msg{background:var(--green-bg);color:var(--green);padding:10px 14px;border-radius:var(--r);font-size:13px;margin-bottom:14px;display:none}
+
+/* APP LAYOUT */
+.app{display:none;flex;height:100vh;overflow:hidden}
+.app.visible{display:flex}
 .sidebar{width:220px;min-width:220px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto}
 .logo{padding:24px 20px 20px;border-bottom:1px solid var(--border)}
 .logo h1{font-family:'Playfair Display',serif;font-size:20px;font-weight:500;letter-spacing:-.3px}
@@ -34,6 +49,8 @@ body{font-family:'Sora',sans-serif;background:var(--bg);color:var(--text);min-he
 .nav-item:hover{background:var(--surface2);color:var(--text)}
 .nav-item.active{background:var(--accent);color:#fff}
 .nav-item.active svg{opacity:1}
+.user-bar{padding:12px 16px;border-top:1px solid var(--border);margin-top:auto}
+.user-email{font-size:11px;color:var(--text3);margin-bottom:8px;word-break:break-all}
 .main{flex:1;overflow-y:auto;background:var(--bg)}
 .page{display:none;padding:28px 32px;max-width:1160px}
 .page.active{display:block}
@@ -82,7 +99,6 @@ tbody tr:hover td{background:rgba(255,255,255,.02)}
 .cat-header-row td{background:var(--surface2);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--text3);padding:10px 12px}
 .cat-total-row td{background:var(--surface3);font-weight:500;font-size:12px;color:var(--text2);padding:8px 12px}
 .sub-row td{font-size:12px;color:var(--text3);padding:5px 12px 5px 28px;border-bottom:1px solid var(--border)}
-.grand-total-row{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:var(--surface2);border-radius:var(--r);margin-top:12px;font-weight:600;font-size:15px}
 .period-bar{display:flex;align-items:center;gap:8px;margin-bottom:20px;flex-wrap:wrap}
 .period-toggle{display:flex;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
 .ptog-btn{padding:7px 14px;font-family:'Sora',sans-serif;font-size:12px;cursor:pointer;border:none;background:transparent;color:var(--text2);transition:all .15s}
@@ -98,7 +114,7 @@ tbody tr:hover td{background:rgba(255,255,255,.02)}
 .bank-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:20px;position:relative;overflow:hidden;transition:border-color .2s,opacity .2s,transform .15s;cursor:grab;user-select:none}
 .bank-card:active{cursor:grabbing}
 .bank-card:hover{border-color:var(--border2)}
-.bank-card.dragging{opacity:.3;transform:scale(.96);cursor:grabbing}
+.bank-card.dragging{opacity:.3;transform:scale(.96)}
 .bank-card.drag-over{border:2px dashed var(--accent);background:rgba(99,102,241,0.06)}
 .drag-handle{position:absolute;top:14px;right:14px;display:flex;flex-direction:column;gap:3px;opacity:.2;pointer-events:none;transition:opacity .15s}
 .drag-handle span{display:block;width:18px;height:2px;background:var(--text2);border-radius:1px}
@@ -129,12 +145,9 @@ tbody tr:hover td{background:rgba(255,255,255,.02)}
 .cat-input-row{display:flex;gap:8px;margin-top:8px}
 .cat-input-row input{flex:1}
 .empty-state{text-align:center;padding:40px 20px;color:var(--text3);font-size:13px}
-/* BANK FIELD HINT */
-.field-hint{font-size:11px;color:var(--text3);margin-top:4px;padding-left:2px}
-/* FLOW ARROW */
+.field-hint{font-size:11px;color:var(--text3);margin-top:4px}
 .flow-arrow{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--text3);padding:6px 0}
 .flow-arrow .arrow{color:var(--accent2);font-size:16px}
-/* NOTES */
 .notes-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
 .note-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:18px 20px;cursor:pointer;transition:border-color .2s,transform .15s;position:relative;display:flex;flex-direction:column;gap:10px}
 .note-card:hover{border-color:var(--border2);transform:translateY(-1px)}
@@ -158,10 +171,43 @@ tbody tr:hover td{background:rgba(255,255,255,.02)}
 .swatch.selected{border-color:var(--text)}
 .toast{position:fixed;bottom:24px;right:24px;background:var(--surface);border:1px solid var(--border2);color:var(--text);padding:12px 18px;border-radius:var(--r);font-size:13px;z-index:999;opacity:0;transform:translateY(8px);transition:all .25s;pointer-events:none;box-shadow:0 10px 30px rgba(0,0,0,.4)}
 .toast.show{opacity:1;transform:translateY(0)}
+.loading{display:flex;align-items:center;justify-content:center;height:100vh;font-size:14px;color:var(--text3)}
+.spinner{width:20px;height:20px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;margin-right:10px}
+@keyframes spin{to{transform:rotate(360deg)}}
 </style>
 </head>
 <body>
-<div class="app">
+
+<!-- LOADING -->
+<div class="loading" id="loading"><div class="spinner"></div>Loading...</div>
+
+<!-- AUTH SCREEN -->
+<div class="auth-wrap" id="auth-screen" style="display:none">
+  <div class="auth-card">
+    <div class="auth-logo">BudgetFlow</div>
+    <div class="auth-sub">PH &middot; Personal Finance</div>
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="switchAuthTab('login',this)">Sign in</button>
+      <button class="auth-tab" onclick="switchAuthTab('signup',this)">Create account</button>
+    </div>
+    <div class="auth-err" id="auth-err"></div>
+    <div class="auth-msg" id="auth-msg"></div>
+    <div id="auth-login">
+      <div class="form-group"><label>Email</label><input type="email" id="login-email" placeholder="you@email.com"></div>
+      <div class="form-group"><label>Password</label><input type="password" id="login-password" placeholder="Your password" onkeydown="if(event.key==='Enter')doLogin()"></div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:4px" onclick="doLogin()">Sign in</button>
+    </div>
+    <div id="auth-signup" style="display:none">
+      <div class="form-group"><label>Email</label><input type="email" id="signup-email" placeholder="you@email.com"></div>
+      <div class="form-group"><label>Password</label><input type="password" id="signup-password" placeholder="Min. 6 characters"></div>
+      <div class="form-group"><label>Confirm password</label><input type="password" id="signup-password2" placeholder="Repeat password" onkeydown="if(event.key==='Enter')doSignup()"></div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:4px" onclick="doSignup()">Create account</button>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div class="app" id="app">
 <aside class="sidebar">
   <div class="logo"><h1>BudgetFlow</h1><span>PH &middot; Personal Finance</span></div>
   <div class="nav-section">Main</div>
@@ -182,16 +228,17 @@ tbody tr:hover td{background:rgba(255,255,255,.02)}
     <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a2 2 0 014-4z"/></svg>
     Categories
   </button>
-  <div style="flex:1"></div>
-  <div style="padding:16px 12px;font-size:11px;color:var(--text3)" id="sidebar-date"></div>
+  <div class="user-bar">
+    <div class="user-email" id="user-email-display"></div>
+    <button class="btn btn-ghost btn-sm" style="width:100%;justify-content:center" onclick="doLogout()">Sign out</button>
+  </div>
 </aside>
-
 <div class="main">
 
 <!-- DASHBOARD -->
 <div id="page-dashboard" class="page active">
   <div class="topbar">
-    <div><div class="page-title">Dashboard</div><div class="page-sub">Live bank balances &mdash; updated by your budget entries</div></div>
+    <div><div class="page-title">Dashboard</div><div class="page-sub">Live bank balances</div></div>
     <button class="btn btn-primary" onclick="openBankModal()">+ Add Bank Account</button>
   </div>
   <div id="dash-metrics" class="metrics"></div>
@@ -205,7 +252,7 @@ tbody tr:hover td{background:rgba(255,255,255,.02)}
 <!-- BUDGET -->
 <div id="page-budget" class="page">
   <div class="topbar">
-    <div><div class="page-title">Budget</div><div class="page-sub" id="budget-sub">Plan and track your money</div></div>
+    <div><div class="page-title">Budget</div><div class="page-sub" id="budget-sub">Plan and track</div></div>
     <button class="btn btn-primary" onclick="openEntryModal()">+ Add Entry</button>
   </div>
   <div class="period-bar">
@@ -291,22 +338,19 @@ tbody tr:hover td{background:rgba(255,255,255,.02)}
     <h3 id="bank-modal-title">Add Bank Account</h3>
     <div class="form-row">
       <div class="form-group"><label>Account name</label><input type="text" id="bk-name" placeholder="e.g. BDO Savings"></div>
-      <div class="form-group"><label>Bank / Institution</label><input type="text" id="bk-bank" placeholder="e.g. BDO, GCash, Maya"></div>
+      <div class="form-group"><label>Bank / Institution</label><input type="text" id="bk-bank" placeholder="e.g. BDO, GCash"></div>
     </div>
     <div class="form-group"><label>Description</label><input type="text" id="bk-desc" placeholder="What is this account for?"></div>
     <div class="form-row">
-      <div class="form-group"><label>Starting balance (&#8369;)</label><input type="number" id="bk-balance" placeholder="0.00"><div class="field-hint">Manual balance before any budget entries</div></div>
-      <div class="form-group"><label>Goal amount (&#8369;, optional)</label><input type="number" id="bk-goal" placeholder="0.00"></div>
+      <div class="form-group"><label>Starting balance (&#8369;)</label><input type="number" id="bk-balance" placeholder="0.00"><div class="field-hint">Balance before any budget entries</div></div>
+      <div class="form-group"><label>Goal amount (&#8369;)</label><input type="number" id="bk-goal" placeholder="0.00"></div>
     </div>
     <div class="form-group"><label>As of date</label><input type="date" id="bk-date"></div>
     <div class="form-group"><label>Color tag</label>
       <select id="bk-color">
-        <option value="var(--red)">Red</option>
-        <option value="#F472B6">Pink</option>
-        <option value="var(--purple)">Purple</option>
-        <option value="var(--gold)">Gold</option>
-        <option value="#FB923C">Orange</option>
-        <option value="var(--teal)">Teal</option>
+        <option value="var(--red)">Red</option><option value="#F472B6">Pink</option>
+        <option value="var(--purple)">Purple</option><option value="var(--gold)">Gold</option>
+        <option value="#FB923C">Orange</option><option value="var(--teal)">Teal</option>
         <option value="var(--blue)">Blue</option>
       </select>
     </div>
@@ -332,51 +376,29 @@ tbody tr:hover td{background:rgba(255,255,255,.02)}
       <div class="form-group" id="cat-group"><label>Category</label><select id="en-cat" onchange="onMainCatChange()"></select></div>
     </div>
     <div class="form-group" id="subcat-group" style="display:none"><label>Sub-category</label><select id="en-subcat"></select></div>
-    <div class="form-group" id="name-group"><label>Name / Description</label><input type="text" id="en-name" placeholder="e.g. Weekly salary, Grocery run"></div>
+    <div class="form-group" id="name-group"><label>Name / Description</label><input type="text" id="en-name" placeholder="e.g. Weekly salary"></div>
     <div class="form-row">
       <div class="form-group"><label>Amount (&#8369;)</label><input type="number" id="en-amount" placeholder="0.00"></div>
-      <div class="form-group"><label>Transfer / Bank fee (&#8369;)</label><input type="number" id="en-fee" placeholder="0.00"></div>
+      <div class="form-group"><label>Transfer fee (&#8369;)</label><input type="number" id="en-fee" placeholder="0.00"></div>
     </div>
-
-    <!-- INCOME: To Bank only -->
     <div id="bank-income-row" class="form-group">
       <label>Received into bank account</label>
       <select id="en-to-bank-income"></select>
-      <div class="field-hint">Which bank account receives this income?</div>
     </div>
-
-    <!-- EXPENSE: From Bank + optional To Bank when transferred -->
     <div id="bank-expense-row" style="display:none">
-      <div class="form-group">
-        <label>Bank Source</label>
-        <select id="en-from-bank-expense"></select>
-        <div class="field-hint">Which bank account pays for this expense?</div>
-      </div>
+      <div class="form-group"><label>Bank Source</label><select id="en-from-bank-expense"></select></div>
       <div class="form-group" id="expense-to-bank-group" style="display:none">
-        <label>Bank Destination</label>
-        <select id="en-to-bank-expense"></select>
-        <div class="field-hint">Destination account &mdash; balance will increase</div>
+        <label>Bank Destination</label><select id="en-to-bank-expense"></select>
       </div>
       <div id="expense-transfer-preview" class="flow-arrow" style="display:none"></div>
     </div>
-
-    <!-- SAVINGS: From Bank + To Bank -->
     <div id="bank-savings-rows" style="display:none">
       <div class="form-row">
-        <div class="form-group">
-          <label>Bank Source</label>
-          <select id="en-from-bank-savings"></select>
-          <div class="field-hint">Source &mdash; balance will decrease</div>
-        </div>
-        <div class="form-group">
-          <label>Bank Destination</label>
-          <select id="en-to-bank-savings"></select>
-          <div class="field-hint">Destination &mdash; balance will increase</div>
-        </div>
+        <div class="form-group"><label>Bank Source</label><select id="en-from-bank-savings"></select><div class="field-hint">Balance will decrease</div></div>
+        <div class="form-group"><label>Bank Destination</label><select id="en-to-bank-savings"></select><div class="field-hint">Balance will increase</div></div>
       </div>
       <div id="transfer-preview" class="flow-arrow" style="display:none"></div>
     </div>
-
     <div class="form-row">
       <div class="form-group"><label>Date</label><input type="date" id="en-date"></div>
       <div class="form-group"><label>Status</label><select id="en-status"></select></div>
@@ -426,37 +448,23 @@ tbody tr:hover td{background:rgba(255,255,255,.02)}
 
 <script>
 // ============================================================
-// STATE  (new key so old data doesn't conflict)
+// SUPABASE INIT
 // ============================================================
-const DB_KEY = 'budgetflow_ph_v4';
-function loadState() { try { return JSON.parse(localStorage.getItem(DB_KEY)) || {}; } catch { return {}; } }
-function initState(s) {
-  if (!s.banks)   s.banks   = [];
-  if (!s.entries) s.entries = [];
-  if (!s.notes)   s.notes   = [];
-  if (!s.cats)    s.cats    = {};
-  if (!s.cats.income) s.cats.income = ['Salary','Freelance','Business','Other'];
-  // Expense cats: array of {name, subs:[]}
-  // Migrate old flat string arrays to new structure
-  if (!s.cats.expense) {
-    s.cats.expense = [
-      { name: 'Fixed Expenses',     subs: ['Rent','Utilities','Insurance'] },
-      { name: 'Lifestyle Expenses', subs: ['Food','Transport','Entertainment','Shopping'] }
-    ];
-  } else if (s.cats.expense.length && typeof s.cats.expense[0] === 'string') {
-    // Migrate legacy flat array
-    s.cats.expense = [{ name: 'General', subs: s.cats.expense }];
-  }
-  return s;
-}
-let S = initState(loadState());
-function save() { localStorage.setItem(DB_KEY, JSON.stringify(S)); }
+const SUPABASE_URL = 'https://bylzebbllmrrqxuebazgv.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ5bHplYmJsbXJycXh1ZWJhemd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4MTcxODksImV4cCI6MjA5NTM5MzE4OX0.HsrK3S5wD-28-TWdImKe2Pikk6Q_wOxB2-o7RLcx66E';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ============================================================
+// STATE
+// ============================================================
+let currentUser = null;
+let S = { banks: [], entries: [], notes: [], cats: { income: [], expense: [] } };
 
 // ============================================================
 // UTILS
 // ============================================================
 const php = n => '\u20B1' + Number(n||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2});
-const uid  = () => Date.now().toString(36) + Math.random().toString(36).slice(2);
+const uid  = () => crypto.randomUUID();
 const todayStr = () => new Date().toISOString().slice(0,10);
 const esc  = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const bankName = id => { const b = S.banks.find(x=>x.id===id); return b ? b.name : ''; };
@@ -476,33 +484,168 @@ function toast(msg, type) {
   t._t = setTimeout(() => t.classList.remove('show'), 2800);
 }
 
+function showLoading() { document.getElementById('loading').style.display='flex'; document.getElementById('auth-screen').style.display='none'; document.getElementById('app').classList.remove('visible'); }
+function showAuth()    { document.getElementById('loading').style.display='none'; document.getElementById('auth-screen').style.display='flex'; document.getElementById('app').classList.remove('visible'); }
+function showApp()     { document.getElementById('loading').style.display='none'; document.getElementById('auth-screen').style.display='none'; document.getElementById('app').classList.add('visible'); }
+
 // ============================================================
-// BANK BALANCE ENGINE
-// Each entry affects bank balances only when status is "active"
-// (received / spent / transferred).
-//
-// Income   received  → toBankId   += amount          (fee already deducted by sender, not tracked here)
-// Expense  spent     → fromBankId -= (amount + fee)  (you pay amount + fee from your account)
-// Savings  xfer'd    → fromBankId -= (amount + fee)  (total leaves source)
-//                      toBankId   += amount           (net arrives at destination; fee is lost)
+// AUTH
+// ============================================================
+function switchAuthTab(tab, btn) {
+  document.querySelectorAll('.auth-tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('auth-login').style.display  = tab==='login'  ? '' : 'none';
+  document.getElementById('auth-signup').style.display = tab==='signup' ? '' : 'none';
+  document.getElementById('auth-err').style.display = 'none';
+  document.getElementById('auth-msg').style.display = 'none';
+}
+
+function showAuthErr(msg) { const el=document.getElementById('auth-err'); el.textContent=msg; el.style.display='block'; }
+function showAuthMsg(msg) { const el=document.getElementById('auth-msg'); el.textContent=msg; el.style.display='block'; }
+
+async function doLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  if (!email||!password) { showAuthErr('Please enter your email and password.'); return; }
+  const { error } = await sb.auth.signInWithPassword({ email, password });
+  if (error) showAuthErr(error.message);
+}
+
+async function doSignup() {
+  const email = document.getElementById('signup-email').value.trim();
+  const password = document.getElementById('signup-password').value;
+  const password2 = document.getElementById('signup-password2').value;
+  if (!email||!password) { showAuthErr('Please fill in all fields.'); return; }
+  if (password !== password2) { showAuthErr('Passwords do not match.'); return; }
+  if (password.length < 6) { showAuthErr('Password must be at least 6 characters.'); return; }
+  const { error } = await sb.auth.signUp({ email, password });
+  if (error) showAuthErr(error.message);
+  else showAuthMsg('Account created! Check your email to confirm, then sign in.');
+}
+
+async function doLogout() {
+  await sb.auth.signOut();
+  S = { banks:[], entries:[], notes:[], cats:{ income:[], expense:[] } };
+  showAuth();
+}
+
+// ============================================================
+// DATA LOADING FROM SUPABASE
+// ============================================================
+async function loadUserData() {
+  const uid = currentUser.id;
+  const [banksRes, entriesRes, notesRes, catsRes] = await Promise.all([
+    sb.from('banks').select('*').eq('user_id', uid).order('sort_order'),
+    sb.from('entries').select('*').eq('user_id', uid).order('created_at'),
+    sb.from('notes').select('*').eq('user_id', uid).order('updated_at', {ascending:false}),
+    sb.from('categories').select('*').eq('user_id', uid).limit(1)
+  ]);
+
+  S.banks   = (banksRes.data||[]).map(mapBank);
+  S.entries = (entriesRes.data||[]).map(mapEntry);
+  S.notes   = (notesRes.data||[]).map(mapNote);
+
+  if (catsRes.data && catsRes.data.length > 0) {
+    S.cats.income  = catsRes.data[0].income  || defaultIncomeCats();
+    S.cats.expense = catsRes.data[0].expense || defaultExpenseCats();
+    S._catsId = catsRes.data[0].id;
+  } else {
+    S.cats.income  = defaultIncomeCats();
+    S.cats.expense = defaultExpenseCats();
+    await saveCats();
+  }
+}
+
+function defaultIncomeCats() { return ['Salary','Freelance','Business','Other']; }
+function defaultExpenseCats() {
+  return [
+    { name: 'Fixed Expenses',     subs: ['Rent','Utilities','Insurance'] },
+    { name: 'Lifestyle Expenses', subs: ['Food','Transport','Entertainment','Shopping'] }
+  ];
+}
+
+// Map DB rows to app format
+function mapBank(r) {
+  return { id:r.id, name:r.name, bank:r.bank||'', desc:r.description||'', baseBalance:r.base_balance||0, goal:r.goal||0, date:r.date||'', color:r.color||'var(--accent)', sortOrder:r.sort_order||0 };
+}
+function mapEntry(r) {
+  return { id:r.id, type:r.type, name:r.name||'', amount:r.amount||0, fee:r.fee||0, date:r.date||'', cat:r.cat||'', subcat:r.subcat||'', status:r.status||'pending', notes:r.notes||'', fromBankId:r.from_bank_id||'', toBankId:r.to_bank_id||'' };
+}
+function mapNote(r) {
+  return { id:r.id, title:r.title||'', body:r.body||'', tags:r.tags||[], color:r.color||'', pinned:r.pinned||false, createdAt:r.created_at, updatedAt:r.updated_at };
+}
+
+// ============================================================
+// SAVE TO SUPABASE
+// ============================================================
+async function saveCats() {
+  const uid = currentUser.id;
+  if (S._catsId) {
+    await sb.from('categories').update({ income: S.cats.income, expense: S.cats.expense }).eq('id', S._catsId);
+  } else {
+    const { data } = await sb.from('categories').insert({ user_id: uid, income: S.cats.income, expense: S.cats.expense }).select().single();
+    if (data) S._catsId = data.id;
+  }
+}
+
+async function dbSaveBank(bank) {
+  const row = { user_id: currentUser.id, name:bank.name, bank:bank.bank, description:bank.desc, base_balance:bank.baseBalance, goal:bank.goal, date:bank.date, color:bank.color, sort_order:bank.sortOrder||0 };
+  if (bank._isNew) {
+    const { data } = await sb.from('banks').insert(row).select().single();
+    return data ? data.id : null;
+  } else {
+    await sb.from('banks').update(row).eq('id', bank.id);
+    return bank.id;
+  }
+}
+
+async function dbDeleteBank(id) { await sb.from('banks').delete().eq('id', id); }
+
+async function dbSaveEntry(entry) {
+  const row = { user_id:currentUser.id, type:entry.type, name:entry.name, amount:entry.amount, fee:entry.fee, date:entry.date, cat:entry.cat, subcat:entry.subcat, status:entry.status, notes:entry.notes, from_bank_id:entry.fromBankId||null, to_bank_id:entry.toBankId||null };
+  if (entry._isNew) {
+    const { data } = await sb.from('entries').insert(row).select().single();
+    return data ? data.id : null;
+  } else {
+    await sb.from('entries').update(row).eq('id', entry.id);
+    return entry.id;
+  }
+}
+
+async function dbDeleteEntry(id) { await sb.from('entries').delete().eq('id', id); }
+
+async function dbSaveNote(note) {
+  const row = { user_id:currentUser.id, title:note.title, body:note.body, tags:note.tags, color:note.color, pinned:note.pinned, updated_at: new Date().toISOString() };
+  if (note._isNew) {
+    const { data } = await sb.from('notes').insert({...row, created_at: new Date().toISOString()}).select().single();
+    return data ? data.id : null;
+  } else {
+    await sb.from('notes').update(row).eq('id', note.id);
+    return note.id;
+  }
+}
+
+async function dbDeleteNote(id) { await sb.from('notes').delete().eq('id', id); }
+
+// ============================================================
+// BALANCE ENGINE
 // ============================================================
 function computeBankBalance(bankId) {
-  const bank = S.banks.find(b => b.id === bankId);
+  const bank = S.banks.find(b=>b.id===bankId);
   if (!bank) return 0;
   let bal = bank.baseBalance || 0;
   for (const en of S.entries) {
-    const amt = en.amount || 0;
-    const fee = en.fee    || 0;
-    if (en.type === 'income' && en.status === 'received') {
-      if (en.toBankId === bankId) bal += amt;
-    } else if (en.type === 'expense' && en.status === 'spent') {
-      if (en.fromBankId === bankId) bal -= (amt + fee);
-    } else if (en.type === 'expense' && en.status === 'transferred') {
-      if (en.fromBankId === bankId) bal -= (amt + fee);
-      if (en.toBankId   === bankId) bal += amt;
-    } else if (en.type === 'savings' && en.status === 'transferred') {
-      if (en.fromBankId === bankId) bal -= (amt + fee);
-      if (en.toBankId   === bankId) bal += amt;
+    const amt = en.amount||0, fee = en.fee||0;
+    if (en.type==='income' && en.status==='received') {
+      if (en.toBankId===bankId) bal += amt;
+    } else if (en.type==='expense' && en.status==='spent') {
+      if (en.fromBankId===bankId) bal -= (amt+fee);
+    } else if (en.type==='expense' && en.status==='transferred') {
+      if (en.fromBankId===bankId) bal -= (amt+fee);
+      if (en.toBankId===bankId)   bal += amt;
+    } else if (en.type==='savings' && en.status==='transferred') {
+      if (en.fromBankId===bankId) bal -= (amt+fee);
+      if (en.toBankId===bankId)   bal += amt;
     }
   }
   return bal;
@@ -512,193 +655,150 @@ function computeBankBalance(bankId) {
 // NAV
 // ============================================================
 function nav(page) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
-  document.getElementById('page-' + page).classList.add('active');
-  const order = ['dashboard','budget','notes','categories'];
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  const order=['dashboard','budget','notes','categories'];
   document.querySelectorAll('.nav-item')[order.indexOf(page)]?.classList.add('active');
-  if (page === 'dashboard')  renderDashboard();
-  if (page === 'budget')     renderBudget();
-  if (page === 'notes')      renderNotes();
-  if (page === 'categories') renderCategories();
+  if (page==='dashboard')  renderDashboard();
+  if (page==='budget')     renderBudget();
+  if (page==='notes')      renderNotes();
+  if (page==='categories') renderCategories();
 }
 
 // ============================================================
 // PERIOD
 // ============================================================
-let viewMode = 'weekly';
-let anchorDate = new Date(); anchorDate.setHours(0,0,0,0);
-let currentTab = 'income';
-let pieChartInst = null, bankChartInst = null;
+let viewMode='weekly', anchorDate=new Date(), currentTab='income';
+let pieChartInst=null, bankChartInst=null;
+anchorDate.setHours(0,0,0,0);
 
 function getRange() {
-  const d = anchorDate;
-  if (viewMode === 'monthly') return [new Date(d.getFullYear(),d.getMonth(),1), new Date(d.getFullYear(),d.getMonth()+1,0)];
-  const day = d.getDay();
-  const mon = new Date(d); mon.setDate(d.getDate() - (day===0 ? 6 : day-1));
-  const end = new Date(mon); end.setDate(mon.getDate() + (viewMode==='biweekly' ? 13 : 6));
-  return [mon, end];
+  const d=anchorDate;
+  if (viewMode==='monthly') return [new Date(d.getFullYear(),d.getMonth(),1),new Date(d.getFullYear(),d.getMonth()+1,0)];
+  const day=d.getDay(), mon=new Date(d);
+  mon.setDate(d.getDate()-(day===0?6:day-1));
+  const end=new Date(mon); end.setDate(mon.getDate()+(viewMode==='biweekly'?13:6));
+  return [mon,end];
 }
 function fmtRangeLabel() {
-  const [s,e] = getRange();
-  if (viewMode === 'monthly') return s.toLocaleDateString('en-PH',{month:'long',year:'numeric'});
-  const o = {month:'short',day:'numeric',year:'numeric'};
-  return s.toLocaleDateString('en-PH',o) + ' \u2013 ' + e.toLocaleDateString('en-PH',o);
+  const [s,e]=getRange();
+  if (viewMode==='monthly') return s.toLocaleDateString('en-PH',{month:'long',year:'numeric'});
+  const o={month:'short',day:'numeric',year:'numeric'};
+  return s.toLocaleDateString('en-PH',o)+' \u2013 '+e.toLocaleDateString('en-PH',o);
 }
 function inRange(str) {
   if (!str) return false;
-  const d = new Date(str+'T00:00:00');
-  const [s,e] = getRange();
-  return d >= s && d <= e;
+  const d=new Date(str+'T00:00:00'), [s,e]=getRange();
+  return d>=s && d<=e;
 }
-function setPeriod(mode, btn) {
-  viewMode = mode;
-  document.querySelectorAll('.ptog-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  renderBudget();
-}
+function setPeriod(mode,btn) { viewMode=mode; document.querySelectorAll('.ptog-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); renderBudget(); }
 function shiftPeriod(dir) {
-  if (viewMode === 'weekly')    anchorDate.setDate(anchorDate.getDate() + dir * 7);
-  else if (viewMode==='biweekly') anchorDate.setDate(anchorDate.getDate() + dir * 14);
-  else anchorDate.setMonth(anchorDate.getMonth() + dir);
+  if (viewMode==='weekly') anchorDate.setDate(anchorDate.getDate()+dir*7);
+  else if (viewMode==='biweekly') anchorDate.setDate(anchorDate.getDate()+dir*14);
+  else anchorDate.setMonth(anchorDate.getMonth()+dir);
   renderBudget();
 }
-function goToday() { anchorDate = new Date(); anchorDate.setHours(0,0,0,0); renderBudget(); }
+function goToday() { anchorDate=new Date(); anchorDate.setHours(0,0,0,0); renderBudget(); }
 
 // ============================================================
-// BANK ACCOUNTS — CRUD
+// BANK ACCOUNTS
 // ============================================================
-let editingBankId = null;
+let editingBankId=null;
 
 function bankSelectOpts(noneLabel) {
-  return `<option value="">${esc(noneLabel)}</option>` +
-    S.banks.map(b => `<option value="${b.id}">${esc(b.name)} (${esc(b.bank||'Account')})</option>`).join('');
+  return `<option value="">${esc(noneLabel)}</option>`+S.banks.map(b=>`<option value="${b.id}">${esc(b.name)} (${esc(b.bank||'Account')})</option>`).join('');
 }
-
 function refreshBankSelects() {
-  const sets = [
-    ['en-to-bank-income',    '— No bank —'],
-    ['en-from-bank-expense', '— No bank —'],
-    ['en-to-bank-expense',   '— Destination bank —'],
-    ['en-from-bank-savings', '— From (source) —'],
-    ['en-to-bank-savings',   '— To (destination) —']
-  ];
-  sets.forEach(([id, lbl]) => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    const cur = el.value;
-    el.innerHTML = bankSelectOpts(lbl);
-    el.value = cur;
+  [['en-to-bank-income','— No bank —'],['en-from-bank-expense','— No bank —'],['en-to-bank-expense','— Destination bank —'],['en-from-bank-savings','— From (source) —'],['en-to-bank-savings','— To (destination) —']].forEach(([id,lbl])=>{
+    const el=document.getElementById(id); if(!el)return;
+    const cur=el.value; el.innerHTML=bankSelectOpts(lbl); el.value=cur;
   });
 }
 
 function openBankModal(id) {
-  editingBankId = id || null;
+  editingBankId=id||null;
   if (id) {
-    const b = S.banks.find(x=>x.id===id);
-    document.getElementById('bank-modal-title').textContent = 'Edit Bank Account';
-    document.getElementById('bk-name').value    = b.name;
-    document.getElementById('bk-bank').value    = b.bank;
-    document.getElementById('bk-desc').value    = b.desc || '';
-    document.getElementById('bk-balance').value = b.baseBalance || 0;
-    document.getElementById('bk-goal').value    = b.goal || '';
-    document.getElementById('bk-date').value    = b.date || todayStr();
-    document.getElementById('bk-color').value   = b.color || 'var(--accent)';
+    const b=S.banks.find(x=>x.id===id);
+    document.getElementById('bank-modal-title').textContent='Edit Bank Account';
+    document.getElementById('bk-name').value=b.name; document.getElementById('bk-bank').value=b.bank;
+    document.getElementById('bk-desc').value=b.desc||''; document.getElementById('bk-balance').value=b.baseBalance||0;
+    document.getElementById('bk-goal').value=b.goal||''; document.getElementById('bk-date').value=b.date||todayStr();
+    document.getElementById('bk-color').value=b.color||'var(--red)';
   } else {
-    document.getElementById('bank-modal-title').textContent = 'Add Bank Account';
-    ['bk-name','bk-bank','bk-desc','bk-balance','bk-goal'].forEach(i => document.getElementById(i).value='');
-    document.getElementById('bk-date').value  = todayStr();
-    document.getElementById('bk-color').value = 'var(--accent)';
+    document.getElementById('bank-modal-title').textContent='Add Bank Account';
+    ['bk-name','bk-bank','bk-desc','bk-balance','bk-goal'].forEach(i=>document.getElementById(i).value='');
+    document.getElementById('bk-date').value=todayStr(); document.getElementById('bk-color').value='var(--red)';
   }
   document.getElementById('bank-modal').classList.add('open');
 }
 function closeBankModal() { document.getElementById('bank-modal').classList.remove('open'); }
 
-function saveBankAccount() {
-  const name = document.getElementById('bk-name').value.trim();
+async function saveBankAccount() {
+  const name=document.getElementById('bk-name').value.trim();
   if (!name) { toast('Account name required.','err'); return; }
-  const obj = {
-    name, bank: document.getElementById('bk-bank').value.trim(),
-    desc: document.getElementById('bk-desc').value.trim(),
-    baseBalance: parseFloat(document.getElementById('bk-balance').value) || 0,
-    goal: parseFloat(document.getElementById('bk-goal').value) || 0,
-    date: document.getElementById('bk-date').value || todayStr(),
-    color: document.getElementById('bk-color').value
-  };
-  if (editingBankId) Object.assign(S.banks.find(x=>x.id===editingBankId), obj);
-  else S.banks.push({ id: uid(), ...obj });
-  save(); closeBankModal(); refreshBankSelects(); renderDashboard(); toast('Bank account saved!');
+  const obj = { name, bank:document.getElementById('bk-bank').value.trim(), desc:document.getElementById('bk-desc').value.trim(), baseBalance:parseFloat(document.getElementById('bk-balance').value)||0, goal:parseFloat(document.getElementById('bk-goal').value)||0, date:document.getElementById('bk-date').value||todayStr(), color:document.getElementById('bk-color').value };
+  if (editingBankId) {
+    Object.assign(S.banks.find(x=>x.id===editingBankId), obj);
+    await dbSaveBank({...obj, id:editingBankId});
+  } else {
+    const tmp = {...obj, id:'tmp', _isNew:true, sortOrder: S.banks.length};
+    const newId = await dbSaveBank(tmp);
+    if (newId) S.banks.push({...obj, id:newId, sortOrder:S.banks.length});
+  }
+  closeBankModal(); refreshBankSelects(); renderDashboard(); toast('Bank account saved!');
 }
 
-function deleteBank(id) {
-  if (!confirm('Delete this bank account? Entries linked to it will lose their bank link.')) return;
-  S.entries.forEach(en => {
-    if (en.fromBankId === id) en.fromBankId = '';
-    if (en.toBankId   === id) en.toBankId   = '';
-  });
-  S.banks = S.banks.filter(b => b.id !== id);
-  save(); refreshBankSelects(); renderDashboard();
+async function deleteBank(id) {
+  if (!confirm('Delete this bank account?')) return;
+  S.entries.forEach(en=>{ if(en.fromBankId===id)en.fromBankId=''; if(en.toBankId===id)en.toBankId=''; });
+  S.banks=S.banks.filter(b=>b.id!==id);
+  await dbDeleteBank(id);
+  refreshBankSelects(); renderDashboard();
 }
 
 // ============================================================
-// DASHBOARD RENDER
+// DASHBOARD
 // ============================================================
 function renderDashboard() {
-  const totBal  = S.banks.reduce((s,b) => s + computeBankBalance(b.id), 0);
-  const totGoal = S.banks.reduce((s,b) => s + (b.goal||0), 0);
-  document.getElementById('dash-metrics').innerHTML = `
+  const totBal=S.banks.reduce((s,b)=>s+computeBankBalance(b.id),0);
+  const totGoal=S.banks.reduce((s,b)=>s+(b.goal||0),0);
+  document.getElementById('dash-metrics').innerHTML=`
     <div class="metric"><div class="m-label">Total balance (live)</div><div class="m-val m-green">${php(totBal)}</div><div class="m-sub">${S.banks.length} accounts tracked</div></div>
     <div class="metric"><div class="m-label">Total goal</div><div class="m-val m-gold">${php(totGoal)}</div><div class="m-sub">${totGoal>0?Math.round(totBal/totGoal*100)+'% achieved':'No goal set'}</div></div>
   `;
-
-  const grid = document.getElementById('bank-cards-grid');
-  if (!S.banks.length) {
-    grid.innerHTML = '<div class="empty-state">No bank accounts yet. Click &ldquo;+ Add Bank Account&rdquo; to start.</div>';
-  } else {
-    grid.innerHTML = S.banks.map(b => {
-      const eff = computeBankBalance(b.id);
-      const pct = b.goal ? Math.min(100, Math.round(eff/b.goal*100)) : 0;
-      // compute in/out from entries
-      const inc = S.entries.filter(e=>e.type==='income' && e.status==='received' && e.toBankId===b.id).reduce((s,e)=>s+(e.amount||0),0);
-      const exp = S.entries.filter(e=>e.type==='expense' && (e.status==='spent'||e.status==='transferred') && e.fromBankId===b.id).reduce((s,e)=>s+(e.amount||0)+(e.fee||0),0);
-      const savOut = S.entries.filter(e=>e.type==='savings' && e.status==='transferred' && e.fromBankId===b.id).reduce((s,e)=>s+(e.amount||0)+(e.fee||0),0);
-      const savIn  = S.entries.filter(e=>e.type==='savings' && e.status==='transferred' && e.toBankId===b.id).reduce((s,e)=>s+(e.amount||0),0);
-      return `<div class="bank-card" draggable="true" data-id="${b.id}"
-        ondragstart="onDragStart(event,'${b.id}')"
-        ondragover="onDragOver(event)"
-        ondragleave="onDragLeave(event)"
-        ondrop="onDrop(event,'${b.id}')"
-        ondragend="onDragEnd(event)">
+  const grid=document.getElementById('bank-cards-grid');
+  if (!S.banks.length) { grid.innerHTML='<div class="empty-state">No bank accounts yet.</div>'; }
+  else {
+    grid.innerHTML=S.banks.map(b=>{
+      const eff=computeBankBalance(b.id), pct=b.goal?Math.min(100,Math.round(eff/b.goal*100)):0;
+      const inc=S.entries.filter(e=>e.type==='income'&&e.status==='received'&&e.toBankId===b.id).reduce((s,e)=>s+(e.amount||0),0);
+      const exp=S.entries.filter(e=>e.type==='expense'&&(e.status==='spent'||e.status==='transferred')&&e.fromBankId===b.id).reduce((s,e)=>s+(e.amount||0)+(e.fee||0),0);
+      const savOut=S.entries.filter(e=>e.type==='savings'&&e.status==='transferred'&&e.fromBankId===b.id).reduce((s,e)=>s+(e.amount||0)+(e.fee||0),0);
+      const savIn=S.entries.filter(e=>e.type==='savings'&&e.status==='transferred'&&e.toBankId===b.id).reduce((s,e)=>s+(e.amount||0),0);
+      return `<div class="bank-card" draggable="true" data-id="${b.id}" ondragstart="onDragStart(event,'${b.id}')" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event,'${b.id}')" ondragend="onDragEnd(event)">
         <div class="drag-handle"><span></span><span></span><span></span></div>
         <div class="bc-inst" style="color:${b.color}">${esc(b.bank||'Account')} &middot; ${esc(b.name)}</div>
         <div class="bc-amount">${php(eff)}</div>
-        <div class="bc-base">Starting balance: ${php(b.baseBalance||0)}</div>
+        <div class="bc-base">Starting: ${php(b.baseBalance||0)}</div>
         <div class="bc-desc">${esc(b.desc||'\u2014')}${b.goal?' &middot; Goal: '+php(b.goal):''}</div>
-        <div class="bc-delta">
-          <span style="color:var(--green)">+${php(inc+savIn)} in</span>
-          <span style="color:var(--red)">&minus;${php(exp+savOut)} out</span>
-        </div>
-        ${b.goal?`<div class="prog-wrap"><div class="prog-bar" style="width:${pct}%;background:${b.color}"></div></div>
-        <div style="font-size:11px;color:var(--text3);margin-top:4px">${pct}% of goal</div>`:''}
+        <div class="bc-delta"><span style="color:var(--green)">+${php(inc+savIn)} in</span><span style="color:var(--red)">&minus;${php(exp+savOut)} out</span></div>
+        ${b.goal?`<div class="prog-wrap"><div class="prog-bar" style="width:${pct}%;background:${b.color}"></div></div><div style="font-size:11px;color:var(--text3);margin-top:4px">${pct}% of goal</div>`:''}
         <div style="font-size:11px;color:var(--text3);margin-top:8px">Updated: ${fmtDateLong(b.date)}</div>
-        <div class="bc-actions">
-          <button class="btn btn-ghost btn-sm" onclick="openBankModal('${b.id}')">Edit</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteBank('${b.id}')">Remove</button>
-        </div>
+        <div class="bc-actions"><button class="btn btn-ghost btn-sm" onclick="openBankModal('${b.id}')">Edit</button><button class="btn btn-danger btn-sm" onclick="deleteBank('${b.id}')">Remove</button></div>
       </div>`;
     }).join('');
   }
-
-  // Snapshot this week
-  const now = new Date(), day = now.getDay();
-  const mon = new Date(now); mon.setDate(now.getDate()-(day===0?6:day-1));
-  const sun = new Date(mon); sun.setDate(mon.getDate()+6);
-  const inW = str => { if(!str)return false; const d=new Date(str+'T00:00:00'); return d>=mon&&d<=sun; };
-  const si = S.entries.filter(e=>e.type==='income' && inW(e.date)).reduce((s,e)=>s+(e.amount||0),0);
-  const se = S.entries.filter(e=>e.type==='expense' && inW(e.date)).reduce((s,e)=>s+(e.amount||0)+(e.fee||0),0);
-  const ss = S.entries.filter(e=>e.type==='savings' && inW(e.date)).reduce((s,e)=>s+(e.amount||0),0);
-  const fd = d => d.toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'});
-  document.getElementById('dash-snap').innerHTML = `
+  // Snapshot
+  const now=new Date(), day=now.getDay(), mon=new Date(now);
+  mon.setDate(now.getDate()-(day===0?6:day-1));
+  const sun=new Date(mon); sun.setDate(mon.getDate()+6);
+  const inW=str=>{ if(!str)return false; const d=new Date(str+'T00:00:00'); return d>=mon&&d<=sun; };
+  const si=S.entries.filter(e=>e.type==='income'&&inW(e.date)).reduce((s,e)=>s+(e.amount||0),0);
+  const se=S.entries.filter(e=>e.type==='expense'&&inW(e.date)).reduce((s,e)=>s+(e.amount||0)+(e.fee||0),0);
+  const ss=S.entries.filter(e=>e.type==='savings'&&inW(e.date)).reduce((s,e)=>s+(e.amount||0),0);
+  const fd=d=>d.toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'});
+  document.getElementById('dash-snap').innerHTML=`
     <div style="font-size:12px;color:var(--text3);margin-bottom:12px">This week &middot; ${fd(mon)} &ndash; ${fd(sun)}</div>
     <div style="display:flex;justify-content:space-between;padding:9px 12px;background:var(--surface3);border-radius:8px;margin-bottom:6px;font-size:13px"><span>Income</span><span class="m-green">${php(si)}</span></div>
     <div style="display:flex;justify-content:space-between;padding:9px 12px;background:var(--surface3);border-radius:8px;margin-bottom:6px;font-size:13px"><span>Expenses</span><span style="color:var(--red)">${php(se)}</span></div>
@@ -706,757 +806,384 @@ function renderDashboard() {
     <div style="display:flex;justify-content:space-between;padding:14px;background:var(--surface2);border-radius:var(--r);margin-top:8px;font-weight:600"><span>Remaining</span><span style="color:${si-se-ss>=0?'var(--green)':'var(--red)'}">${php(si-se-ss)}</span></div>
     <button class="btn btn-ghost btn-sm" style="margin-top:12px;width:100%" onclick="nav('budget')">View full budget &rarr;</button>
   `;
-
-  // Bank chart
-  if (bankChartInst) { bankChartInst.destroy(); bankChartInst=null; }
+  if (bankChartInst){bankChartInst.destroy();bankChartInst=null;}
   if (S.banks.length) {
-    bankChartInst = new Chart(document.getElementById('bankChart'), {
-      type: 'bar',
-      data: {
-        labels: S.banks.map(b=>b.name),
-        datasets: [
-          { label:'Balance', data:S.banks.map(b=>computeBankBalance(b.id)), backgroundColor:S.banks.map(b=>b.color||'var(--accent)'), borderRadius:6, barPercentage:.55 },
-          { label:'Goal',    data:S.banks.map(b=>b.goal||0), backgroundColor:'rgba(255,255,255,.05)', borderRadius:6, barPercentage:.55 }
-        ]
-      },
-      options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ y:{ticks:{callback:v=>'\u20B1'+v.toLocaleString(),color:'#555B73'},grid:{color:'rgba(255,255,255,.04)'}}, x:{grid:{display:false},ticks:{color:'#555B73'}} } }
-    });
+    bankChartInst=new Chart(document.getElementById('bankChart'),{type:'bar',data:{labels:S.banks.map(b=>b.name),datasets:[{label:'Balance',data:S.banks.map(b=>computeBankBalance(b.id)),backgroundColor:S.banks.map(b=>b.color||'var(--accent)'),borderRadius:6,barPercentage:.55},{label:'Goal',data:S.banks.map(b=>b.goal||0),backgroundColor:'rgba(255,255,255,.05)',borderRadius:6,barPercentage:.55}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>'\u20B1'+v.toLocaleString(),color:'#555B73'},grid:{color:'rgba(255,255,255,.04)'}},x:{grid:{display:false},ticks:{color:'#555B73'}}}}});
   }
 }
+
+// ============================================================
+// DRAG & DROP
+// ============================================================
+let dragSrcId=null;
+function onDragStart(e,id){dragSrcId=id;e.dataTransfer.effectAllowed='move';setTimeout(()=>e.target.classList.add('dragging'),0);}
+function onDragOver(e){e.preventDefault();e.dataTransfer.dropEffect='move';const c=e.currentTarget;if(c.dataset.id!==dragSrcId)c.classList.add('drag-over');}
+function onDragLeave(e){e.currentTarget.classList.remove('drag-over');}
+async function onDrop(e,targetId){
+  e.preventDefault();e.currentTarget.classList.remove('drag-over');
+  if(!dragSrcId||dragSrcId===targetId)return;
+  const fi=S.banks.findIndex(b=>b.id===dragSrcId), ti=S.banks.findIndex(b=>b.id===targetId);
+  if(fi<0||ti<0)return;
+  const [moved]=S.banks.splice(fi,1);S.banks.splice(ti,0,moved);
+  // Update sort orders in DB
+  await Promise.all(S.banks.map((b,i)=>sb.from('banks').update({sort_order:i}).eq('id',b.id)));
+  renderDashboard();
+}
+function onDragEnd(e){dragSrcId=null;document.querySelectorAll('.bank-card').forEach(c=>c.classList.remove('dragging','drag-over'));}
 
 // ============================================================
 // ENTRY MODAL
 // ============================================================
-let editingEntryId = null;
-const ST_INCOME  = ['pending','received'];
-const ST_EXPENSE = ['pending','spent','transferred'];
-const ST_SAVINGS = ['pending','transferred'];
+let editingEntryId=null;
+const ST_INCOME=['pending','received'], ST_EXPENSE=['pending','spent','transferred'], ST_SAVINGS=['pending','transferred'];
 
-function badgeClass(type, status) {
-  if (status==='received'||status==='transferred') return 'b-green';
-  if (status==='spent') return 'b-blue';
-  return 'b-gold';
-}
-function nextStatus(type, cur) {
-  const arr = type==='income'?ST_INCOME : type==='expense'?ST_EXPENSE : ST_SAVINGS;
-  return arr[(arr.indexOf(cur)+1)%arr.length];
-}
+function badgeClass(type,status){if(status==='received'||status==='transferred')return 'b-green';if(status==='spent')return 'b-blue';return 'b-gold';}
+function nextStatus(type,cur){const arr=type==='income'?ST_INCOME:type==='expense'?ST_EXPENSE:ST_SAVINGS;return arr[(arr.indexOf(cur)+1)%arr.length];}
 
-function onTypeChange() {
-  const type = document.getElementById('en-type').value;
-  const isSavings = type === 'savings';
-  const isExpense = type === 'expense';
-
-  // Hide category + name for savings
-  document.getElementById('cat-group').style.display    = isSavings ? 'none' : '';
-  document.getElementById('name-group').style.display   = (isSavings || isExpense) ? 'none' : '';
-  document.getElementById('subcat-group').style.display = 'none'; // shown by onMainCatChange for expense
-
-  // Populate main category dropdown
-  if (isExpense) {
-    const groups = S.cats.expense || [];
-    document.getElementById('en-cat').innerHTML = groups.length
-      ? groups.map(g => `<option value="${esc(g.name)}">${esc(g.name)}</option>`).join('')
-      : '<option value="">No categories — add in Categories page</option>';
-    onMainCatChange(); // populate sub-cat
+function onTypeChange(){
+  const type=document.getElementById('en-type').value;
+  const isSavings=type==='savings', isExpense=type==='expense';
+  document.getElementById('cat-group').style.display=(isSavings)?'none':'';
+  document.getElementById('name-group').style.display=(isSavings||isExpense)?'none':'';
+  document.getElementById('subcat-group').style.display='none';
+  if (isExpense){
+    const groups=S.cats.expense||[];
+    document.getElementById('en-cat').innerHTML=groups.length?groups.map(g=>`<option value="${esc(g.name)}">${esc(g.name)}</option>`).join(''):'<option value="">No categories</option>';
+    onMainCatChange();
   } else {
-    const cats = S.cats[type] || [];
-    document.getElementById('en-cat').innerHTML = cats.length
-      ? cats.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('')
-      : '<option value="">No categories</option>';
+    const cats=S.cats[type]||[];
+    document.getElementById('en-cat').innerHTML=cats.length?cats.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join(''):'<option value="">No categories</option>';
   }
-
-  // Status options
-  const statuses = type==='income'?ST_INCOME : type==='expense'?ST_EXPENSE : ST_SAVINGS;
-  document.getElementById('en-status').innerHTML = statuses.map(s=>`<option value="${s}">${s.charAt(0).toUpperCase()+s.slice(1)}</option>`).join('');
-
-  // Bank fields visibility
-  document.getElementById('bank-income-row').style.display   = type==='income'  ? '' : 'none';
-  document.getElementById('bank-expense-row').style.display  = isExpense        ? '' : 'none';
-  document.getElementById('bank-savings-rows').style.display = isSavings        ? '' : 'none';
-
-  if (isExpense) updateExpenseTransferUI();
-
-  // Refresh bank options
+  const statuses=type==='income'?ST_INCOME:type==='expense'?ST_EXPENSE:ST_SAVINGS;
+  document.getElementById('en-status').innerHTML=statuses.map(s=>`<option value="${s}">${s.charAt(0).toUpperCase()+s.slice(1)}</option>`).join('');
+  document.getElementById('bank-income-row').style.display=type==='income'?'':'none';
+  document.getElementById('bank-expense-row').style.display=isExpense?'':'none';
+  document.getElementById('bank-savings-rows').style.display=isSavings?'':'none';
+  if(isExpense)updateExpenseTransferUI();
   refreshBankSelects();
   updateTransferPreview();
 }
 
-function onMainCatChange() {
-  const mainCat = document.getElementById('en-cat').value;
-  const group   = (S.cats.expense || []).find(g => g.name === mainCat);
-  const subs    = group ? group.subs : [];
-  const subcatEl = document.getElementById('en-subcat');
-  const subcatGroup = document.getElementById('subcat-group');
-  if (subs.length) {
-    subcatEl.innerHTML = subs.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
-    subcatGroup.style.display = '';
-  } else {
-    subcatEl.innerHTML = '<option value="">No sub-categories</option>';
-    subcatGroup.style.display = 'none';
-  }
+function onMainCatChange(){
+  const mainCat=document.getElementById('en-cat').value;
+  const group=(S.cats.expense||[]).find(g=>g.name===mainCat);
+  const subs=group?group.subs:[];
+  const subcatEl=document.getElementById('en-subcat');
+  if(subs.length){subcatEl.innerHTML=subs.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('');document.getElementById('subcat-group').style.display='';}
+  else{subcatEl.innerHTML='<option value="">No sub-categories</option>';document.getElementById('subcat-group').style.display='none';}
 }
 
-function updateTransferPreview() {
-  const type = document.getElementById('en-type').value;
-  if (type !== 'savings') return;
-  const fromId = document.getElementById('en-from-bank-savings').value;
-  const toId   = document.getElementById('en-to-bank-savings').value;
-  const prev   = document.getElementById('transfer-preview');
-  const fn = fromId ? bankName(fromId) : '?';
-  const tn = toId   ? bankName(toId)   : '?';
-  if (fromId || toId) {
-    prev.style.display = 'flex';
-    prev.innerHTML = `<span>${esc(fn)}</span><span class="arrow">&rarr;</span><span>${esc(tn)}</span><span style="color:var(--text3);margin-left:8px">Amount arrives at destination; fee stays at source</span>`;
-  } else {
-    prev.style.display = 'none';
-  }
-  // Auto-set entry name = destination bank name (editable fallback stored internally)
-  if (toId) document.getElementById('en-name').value = tn;
+function updateTransferPreview(){
+  const type=document.getElementById('en-type').value;
+  if(type!=='savings')return;
+  const fromId=document.getElementById('en-from-bank-savings').value;
+  const toId=document.getElementById('en-to-bank-savings').value;
+  const prev=document.getElementById('transfer-preview');
+  if(toId){document.getElementById('en-name').value=bankName(toId);}
+  if(fromId||toId){prev.style.display='flex';prev.innerHTML=`<span>${esc(bankName(fromId)||'?')}</span><span class="arrow">&rarr;</span><span>${esc(bankName(toId)||'?')}</span>`;}
+  else{prev.style.display='none';}
 }
 
-// Attach live preview listener after DOM ready
-['en-from-bank-savings','en-to-bank-savings'].forEach(id => {
-  document.getElementById(id)?.addEventListener('change', updateTransferPreview);
-});
-
-function updateExpenseTransferUI() {
-  const status  = document.getElementById('en-status').value;
-  const isXfer  = status === 'transferred';
-  document.getElementById('expense-to-bank-group').style.display = isXfer ? '' : 'none';
-  const prev = document.getElementById('expense-transfer-preview');
-  if (isXfer) {
-    const fromId = document.getElementById('en-from-bank-expense').value;
-    const toId   = document.getElementById('en-to-bank-expense').value;
-    const fn = fromId ? bankName(fromId) : '?';
-    const tn = toId   ? bankName(toId)   : '?';
-    if (fromId || toId) {
-      prev.style.display = 'flex';
-      prev.innerHTML = `<span>${esc(fn)}</span><span class="arrow">&rarr;</span><span>${esc(tn)}</span><span style="color:var(--text3);margin-left:8px">Amount arrives at destination; fee stays at source</span>`;
-    } else {
-      prev.style.display = 'none';
-    }
-  } else {
-    prev.style.display = 'none';
-  }
+function updateExpenseTransferUI(){
+  const status=document.getElementById('en-status').value;
+  const isXfer=status==='transferred';
+  document.getElementById('expense-to-bank-group').style.display=isXfer?'':'none';
+  const prev=document.getElementById('expense-transfer-preview');
+  if(isXfer){
+    const fromId=document.getElementById('en-from-bank-expense').value;
+    const toId=document.getElementById('en-to-bank-expense').value;
+    if(fromId||toId){prev.style.display='flex';prev.innerHTML=`<span>${esc(bankName(fromId)||'?')}</span><span class="arrow">&rarr;</span><span>${esc(bankName(toId)||'?')}</span>`;}
+    else prev.style.display='none';
+  } else prev.style.display='none';
 }
 
-// Attach expense status + bank change listeners
-document.getElementById('en-status').addEventListener('change', () => {
-  if (document.getElementById('en-type').value === 'expense') updateExpenseTransferUI();
-});
-['en-from-bank-expense','en-to-bank-expense'].forEach(id => {
-  document.getElementById(id)?.addEventListener('change', updateExpenseTransferUI);
-});
+document.getElementById('en-status').addEventListener('change',()=>{if(document.getElementById('en-type').value==='expense')updateExpenseTransferUI();});
+document.getElementById('en-from-bank-savings').addEventListener('change',updateTransferPreview);
+document.getElementById('en-to-bank-savings').addEventListener('change',updateTransferPreview);
+['en-from-bank-expense','en-to-bank-expense'].forEach(id=>document.getElementById(id)?.addEventListener('change',updateExpenseTransferUI));
 
-function openEntryModal(id) {
-  editingEntryId = id || null;
-  if (id) {
-    const en = S.entries.find(x=>x.id===id);
-    document.getElementById('entry-modal-title').textContent = 'Edit Entry';
-    document.getElementById('en-type').value   = en.type;
-    if (en.type !== 'expense' && en.type !== 'savings') {
-      document.getElementById('en-name').value = en.name;
-    }
-    document.getElementById('en-amount').value = en.amount;
-    document.getElementById('en-fee').value    = en.fee || '';
-    document.getElementById('en-date').value   = en.date;
-    document.getElementById('en-notes').value  = en.notes || '';
+function openEntryModal(id){
+  editingEntryId=id||null;
+  if(id){
+    const en=S.entries.find(x=>x.id===id);
+    document.getElementById('entry-modal-title').textContent='Edit Entry';
+    document.getElementById('en-type').value=en.type;
+    if(en.type!=='expense'&&en.type!=='savings') document.getElementById('en-name').value=en.name;
+    document.getElementById('en-amount').value=en.amount;
+    document.getElementById('en-fee').value=en.fee||'';
+    document.getElementById('en-date').value=en.date;
+    document.getElementById('en-notes').value=en.notes||'';
     onTypeChange();
-    document.getElementById('en-cat').value    = en.cat || '';
-    document.getElementById('en-status').value = en.status;
-    if (en.type === 'expense') {
-      onMainCatChange();
-      document.getElementById('en-subcat').value = en.subcat || '';
-    }
-    if (en.type === 'income')  document.getElementById('en-to-bank-income').value    = en.toBankId   || '';
-    if (en.type === 'expense') {
-      document.getElementById('en-from-bank-expense').value = en.fromBankId || '';
-      document.getElementById('en-to-bank-expense').value   = en.toBankId   || '';
-      updateExpenseTransferUI();
-    }
-    if (en.type === 'savings') {
-      document.getElementById('en-from-bank-savings').value = en.fromBankId || '';
-      document.getElementById('en-to-bank-savings').value   = en.toBankId   || '';
-      updateTransferPreview();
-    }
+    document.getElementById('en-cat').value=en.cat||'';
+    document.getElementById('en-status').value=en.status;
+    if(en.type==='expense'){onMainCatChange();document.getElementById('en-subcat').value=en.subcat||'';document.getElementById('en-from-bank-expense').value=en.fromBankId||'';document.getElementById('en-to-bank-expense').value=en.toBankId||'';updateExpenseTransferUI();}
+    if(en.type==='income') document.getElementById('en-to-bank-income').value=en.toBankId||'';
+    if(en.type==='savings'){document.getElementById('en-from-bank-savings').value=en.fromBankId||'';document.getElementById('en-to-bank-savings').value=en.toBankId||'';updateTransferPreview();}
   } else {
-    document.getElementById('entry-modal-title').textContent = 'Add Entry';
-    const defaultType = currentTab==='savings'?'savings' : currentTab==='expenses'?'expense' : 'income';
-    document.getElementById('en-type').value = defaultType;
-    ['en-name','en-amount','en-fee','en-notes'].forEach(i => document.getElementById(i).value='');
-    document.getElementById('en-date').value = todayStr();
+    document.getElementById('entry-modal-title').textContent='Add Entry';
+    const defaultType=currentTab==='savings'?'savings':currentTab==='expenses'?'expense':'income';
+    document.getElementById('en-type').value=defaultType;
+    ['en-name','en-amount','en-fee','en-notes'].forEach(i=>document.getElementById(i).value='');
+    document.getElementById('en-date').value=todayStr();
     onTypeChange();
   }
   document.getElementById('entry-modal').classList.add('open');
 }
-function closeEntryModal() { document.getElementById('entry-modal').classList.remove('open'); }
+function closeEntryModal(){document.getElementById('entry-modal').classList.remove('open');}
 
-function openEntryModalForSub(mainCat, subCat) {
+function openEntryModalForSub(mainCat,subCat){
   openEntryModal();
-  document.getElementById('en-type').value = 'expense';
-  onTypeChange();
-  document.getElementById('en-cat').value = mainCat;
-  onMainCatChange();
-  document.getElementById('en-subcat').value = subCat;
+  document.getElementById('en-type').value='expense';onTypeChange();
+  document.getElementById('en-cat').value=mainCat;onMainCatChange();
+  document.getElementById('en-subcat').value=subCat;
 }
-
-function openEntryModalForBank(toBankId) {
+function openEntryModalForBank(toBankId){
   openEntryModal();
-  document.getElementById('en-type').value = 'savings';
-  onTypeChange();
-  // Pre-fill destination bank
-  document.getElementById('en-to-bank-savings').value = toBankId;
+  document.getElementById('en-type').value='savings';onTypeChange();
+  document.getElementById('en-to-bank-savings').value=toBankId;
   updateTransferPreview();
 }
 
-function saveEntry() {
-  const type   = document.getElementById('en-type').value;
-  const amount = parseFloat(document.getElementById('en-amount').value);
-  const isSavings = type === 'savings';
-  const isExpense = type === 'expense';
-
-  // Name is auto-derived for savings (destination bank) and expenses (sub-category or main category)
+async function saveEntry(){
+  const type=document.getElementById('en-type').value;
+  const amount=parseFloat(document.getElementById('en-amount').value);
+  const isSavings=type==='savings', isExpense=type==='expense';
   let name;
-  if (isSavings) {
-    const toBankIdSav = document.getElementById('en-to-bank-savings').value;
-    name = toBankIdSav ? bankName(toBankIdSav) : 'Savings Transfer';
-  } else if (isExpense) {
-    const subVal = document.getElementById('en-subcat').value;
-    const catVal = document.getElementById('en-cat').value;
-    name = subVal || catVal || 'Expense';
+  if(isSavings){const toId=document.getElementById('en-to-bank-savings').value;name=toId?bankName(toId):'Savings Transfer';}
+  else if(isExpense){const sub=document.getElementById('en-subcat').value;const cat=document.getElementById('en-cat').value;name=sub||cat||'Expense';}
+  else name=document.getElementById('en-name').value.trim();
+  if(!name||isNaN(amount)||amount<=0){toast('Please fill in all required fields.','err');return;}
+  const obj={type,name,amount,fee:parseFloat(document.getElementById('en-fee').value)||0,date:document.getElementById('en-date').value||todayStr(),cat:isSavings?'':document.getElementById('en-cat').value,subcat:isExpense?document.getElementById('en-subcat').value:'',status:document.getElementById('en-status').value,notes:document.getElementById('en-notes').value.trim(),fromBankId:'',toBankId:''};
+  if(type==='income') obj.toBankId=document.getElementById('en-to-bank-income').value;
+  if(type==='expense'){obj.fromBankId=document.getElementById('en-from-bank-expense').value;obj.toBankId=document.getElementById('en-to-bank-expense').value;}
+  if(isSavings){obj.fromBankId=document.getElementById('en-from-bank-savings').value;obj.toBankId=document.getElementById('en-to-bank-savings').value;}
+  if(editingEntryId){
+    Object.assign(S.entries.find(x=>x.id===editingEntryId),obj);
+    await dbSaveEntry({...obj,id:editingEntryId});
   } else {
-    name = document.getElementById('en-name').value.trim();
+    const newId=await dbSaveEntry({...obj,_isNew:true});
+    if(newId) S.entries.push({...obj,id:newId});
   }
-
-  if (!name || isNaN(amount) || amount <= 0) { toast('Please fill in all required fields.','err'); return; }
-
-  const obj = {
-    type, name, amount,
-    fee:        parseFloat(document.getElementById('en-fee').value) || 0,
-    date:       document.getElementById('en-date').value || todayStr(),
-    cat:        isSavings ? '' : document.getElementById('en-cat').value,
-    subcat:     (type==='expense') ? document.getElementById('en-subcat').value : '',
-    status:     document.getElementById('en-status').value,
-    notes:      document.getElementById('en-notes').value.trim(),
-    fromBankId: '',
-    toBankId:   ''
-  };
-
-  if (type === 'income')  obj.toBankId   = document.getElementById('en-to-bank-income').value;
-  if (type === 'expense') {
-    obj.fromBankId = document.getElementById('en-from-bank-expense').value;
-    obj.toBankId   = document.getElementById('en-to-bank-expense').value;
-  }
-  if (isSavings) {
-    obj.fromBankId = document.getElementById('en-from-bank-savings').value;
-    obj.toBankId   = document.getElementById('en-to-bank-savings').value;
-  }
-
-  if (editingEntryId) Object.assign(S.entries.find(x=>x.id===editingEntryId), obj);
-  else S.entries.push({ id: uid(), ...obj });
-
-  save(); closeEntryModal(); renderBudget(); renderDashboard(); toast('Entry saved!');
+  closeEntryModal();renderBudget();renderDashboard();toast('Entry saved!');
 }
 
-function deleteEntry(id) {
-  S.entries = S.entries.filter(e => e.id !== id);
-  save(); renderBudget(); renderDashboard();
+async function deleteEntry(id){
+  S.entries=S.entries.filter(e=>e.id!==id);
+  await dbDeleteEntry(id);
+  renderBudget();renderDashboard();
 }
 
-function toggleEntryStatus(id) {
-  const en = S.entries.find(x=>x.id===id);
-  if (!en) return;
-  en.status = nextStatus(en.type, en.status);
-  save(); renderBudget(); renderDashboard();
+async function toggleEntryStatus(id){
+  const en=S.entries.find(x=>x.id===id);if(!en)return;
+  en.status=nextStatus(en.type,en.status);
+  await dbSaveEntry({...en});
+  renderBudget();renderDashboard();
 }
 
 // ============================================================
 // BUDGET RENDER
 // ============================================================
-function setTab(tab, btn) {
-  currentTab = tab;
+function setTab(tab,btn){
+  currentTab=tab;
   document.querySelectorAll('.stab').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
   document.querySelectorAll('.tab-content').forEach(t=>t.style.display='none');
-  document.getElementById('tab-' + (tab==='expenses'?'expenses':tab)).style.display = 'block';
+  document.getElementById('tab-'+(tab==='expenses'?'expenses':tab)).style.display='block';
 }
 
-function renderBudget() {
-  document.getElementById('date-display').textContent = fmtRangeLabel();
-  document.getElementById('budget-sub').textContent = 'Budget for ' + fmtRangeLabel();
-
-  const inc = S.entries.filter(e=>e.type==='income'  && inRange(e.date));
-  const exp = S.entries.filter(e=>e.type==='expense' && inRange(e.date));
-  const sav = S.entries.filter(e=>e.type==='savings' && inRange(e.date));
-
-  const total = arr => arr.reduce((s,e) => s+(e.amount||0)+(e.fee||0), 0);
-  const ti=total(inc), te=total(exp), ts=total(sav), rem=ti-te-ts;
-
-  document.getElementById('total-strip').innerHTML = `
+function renderBudget(){
+  document.getElementById('date-display').textContent=fmtRangeLabel();
+  document.getElementById('budget-sub').textContent='Budget for '+fmtRangeLabel();
+  const inc=S.entries.filter(e=>e.type==='income'&&inRange(e.date));
+  const exp=S.entries.filter(e=>e.type==='expense'&&inRange(e.date));
+  const sav=S.entries.filter(e=>e.type==='savings'&&inRange(e.date));
+  const total=arr=>arr.reduce((s,e)=>s+(e.amount||0)+(e.fee||0),0);
+  const ti=total(inc),te=total(exp),ts=total(sav),rem=ti-te-ts;
+  document.getElementById('total-strip').innerHTML=`
     <div class="ts-item"><div class="ts-label">Income</div><div class="ts-val m-green">${php(ti)}</div></div>
     <div class="ts-item"><div class="ts-label">Expenses</div><div class="ts-val" style="color:var(--red)">${php(te)}</div></div>
     <div class="ts-item"><div class="ts-label">Savings</div><div class="ts-val" style="color:var(--purple)">${php(ts)}</div></div>
     <div class="ts-item"><div class="ts-label">Remaining</div><div class="ts-val" style="color:${rem>=0?'var(--green)':'var(--red)'}">${php(rem)}</div></div>
   `;
-  document.getElementById('remaining-amt').textContent = php(rem);
-  document.getElementById('remaining-amt').style.color = rem>=0?'var(--green)':'var(--red)';
-  document.getElementById('remaining-sub').textContent = `${php(ti)} income \u2212 ${php(te)} expenses \u2212 ${php(ts)} savings`;
-
-  if (pieChartInst) { pieChartInst.destroy(); pieChartInst=null; }
-  const pv = [te, ts, Math.max(0,rem)];
-  if (pv.some(v=>v>0)) {
-    pieChartInst = new Chart(document.getElementById('pieChart'), {
-      type:'doughnut',
-      data:{ labels:['Expenses','Savings','Remaining'], datasets:[{data:pv,backgroundColor:['#F87171','#A78BFA','#22C55E'],borderWidth:0,hoverOffset:4}] },
-      options:{ responsive:true, maintainAspectRatio:false, cutout:'60%', plugins:{
-        tooltip:{ callbacks:{ label:ctx=>{ const t=ctx.dataset.data.reduce((a,b)=>a+b,0); return ' '+ctx.label+': '+(t>0?Math.round(ctx.parsed/t*100):0)+'%'; }}},
-        legend:{ position:'bottom', labels:{ color:'#8B90A8', font:{size:11}, boxWidth:10, padding:10 }}
-      }}
-    });
+  document.getElementById('remaining-amt').textContent=php(rem);
+  document.getElementById('remaining-amt').style.color=rem>=0?'var(--green)':'var(--red)';
+  document.getElementById('remaining-sub').textContent=`${php(ti)} income \u2212 ${php(te)} expenses \u2212 ${php(ts)} savings`;
+  if(pieChartInst){pieChartInst.destroy();pieChartInst=null;}
+  const pv=[te,ts,Math.max(0,rem)];
+  if(pv.some(v=>v>0)){
+    pieChartInst=new Chart(document.getElementById('pieChart'),{type:'doughnut',data:{labels:['Expenses','Savings','Remaining'],datasets:[{data:pv,backgroundColor:['#F87171','#A78BFA','#22C55E'],borderWidth:0,hoverOffset:4}]},options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{tooltip:{callbacks:{label:ctx=>{const tot=ctx.dataset.data.reduce((a,b)=>a+b,0);return ' '+ctx.label+': '+(tot>0?Math.round(ctx.parsed/tot*100):0)+'%';}}},legend:{position:'bottom',labels:{color:'#8B90A8',font:{size:11},boxWidth:10,padding:10}}}}});
   }
-
-  renderSectionTable('income',  inc, ti, 'tab-income');
-  renderSectionTable('expense', exp, te, 'tab-expenses');
-  renderSectionTable('savings', sav, ts, 'tab-savings');
+  renderSectionTable('income',inc,ti,'tab-income');
+  renderSectionTable('expense',exp,te,'tab-expenses');
+  renderSectionTable('savings',sav,ts,'tab-savings');
 }
 
-function buildEntryRow(en, type, tColor) {
-  const bc    = badgeClass(en.type, en.status);
-  const amt   = en.amount || 0;
-  const fee   = en.fee    || 0;
-  const total = amt + fee;
-  let bankDisplay = '';
-  if (type==='income')  bankDisplay = en.toBankId ? esc(bankName(en.toBankId)) : '<span style="color:var(--text3)">—</span>';
-  if (type==='expense') {
-    if (en.status==='transferred' && (en.fromBankId||en.toBankId)) {
-      bankDisplay = `${en.fromBankId?esc(bankName(en.fromBankId)):'?'} <span style="color:var(--accent2)">&rarr;</span> ${en.toBankId?esc(bankName(en.toBankId)):'?'}`;
-    } else {
-      bankDisplay = en.fromBankId ? esc(bankName(en.fromBankId)) : '<span style="color:var(--text3)">—</span>';
-    }
-  }
-  if (type==='savings') {
-    bankDisplay = `${en.fromBankId?esc(bankName(en.fromBankId)):'?'} <span style="color:var(--accent2)">&rarr;</span> ${en.toBankId?esc(bankName(en.toBankId)):'?'}`;
-  }
-  let html = `<tr>
-    <td><strong>${esc(en.name)}</strong>${en.notes?`<div style="font-size:11px;color:var(--text3);margin-top:2px">${esc(en.notes)}</div>`:''}</td>
-    <td style="font-size:12px">${bankDisplay}</td>
-    <td style="font-weight:500;color:${tColor}">${php(total)}</td>
-    <td style="color:var(--text3);font-size:12px">${fmtDateLong(en.date)}</td>
-    <td><span class="badge ${bc}" onclick="toggleEntryStatus('${en.id}')" title="Click to change">${en.status}</span></td>
-    <td><div style="display:flex;gap:4px">
-      <button class="btn btn-ghost btn-xs" onclick="openEntryModal('${en.id}')">Edit</button>
-      <button class="btn btn-danger btn-xs" onclick="deleteEntry('${en.id}')">&#10005;</button>
-    </div></td>
-  </tr>`;
-  if (fee > 0) {
-    html += `<tr class="sub-row"><td colspan="2">&nbsp;&nbsp;&rarr; Transfer / bank fee</td><td style="color:var(--text3)">${php(fee)}</td><td colspan="3" style="color:var(--text3);font-size:11px">Deducted from source account</td></tr>`;
-  }
+function buildEntryRow(en,type,tColor){
+  const bc=badgeClass(en.type,en.status),amt=en.amount||0,fee=en.fee||0,total=amt+fee;
+  let bd='';
+  if(type==='income') bd=en.toBankId?esc(bankName(en.toBankId)):'<span style="color:var(--text3)">—</span>';
+  if(type==='expense'){if(en.status==='transferred'&&(en.fromBankId||en.toBankId)){bd=`${en.fromBankId?esc(bankName(en.fromBankId)):'?'} <span style="color:var(--accent2)">&rarr;</span> ${en.toBankId?esc(bankName(en.toBankId)):'?'}`;}else{bd=en.fromBankId?esc(bankName(en.fromBankId)):'<span style="color:var(--text3)">—</span>';}}
+  if(type==='savings') bd=`${en.fromBankId?esc(bankName(en.fromBankId)):'?'} <span style="color:var(--accent2)">&rarr;</span> ${en.toBankId?esc(bankName(en.toBankId)):'?'}`;
+  let html=`<tr><td><strong>${esc(en.name)}</strong>${en.notes?`<div style="font-size:11px;color:var(--text3);margin-top:2px">${esc(en.notes)}</div>`:''}</td><td style="font-size:12px">${bd}</td><td style="font-weight:500;color:${tColor}">${php(total)}</td><td style="color:var(--text3);font-size:12px">${fmtDateLong(en.date)}</td><td><span class="badge ${bc}" onclick="toggleEntryStatus('${en.id}')">${en.status}</span></td><td><div style="display:flex;gap:4px"><button class="btn btn-ghost btn-xs" onclick="openEntryModal('${en.id}')">Edit</button><button class="btn btn-danger btn-xs" onclick="deleteEntry('${en.id}')">&#10005;</button></div></td></tr>`;
+  if(fee>0) html+=`<tr class="sub-row"><td colspan="2">&nbsp;&nbsp;&rarr; Transfer fee</td><td style="color:var(--text3)">${php(fee)}</td><td colspan="3"></td></tr>`;
   return html;
 }
 
-function renderSectionTable(type, entries, sectionTotal, wrapperId) {
-  const wrap = document.getElementById(wrapperId);
-  const label = type==='income'?'Income':type==='expense'?'Expenses':'Savings';
-  const tColor = type==='income'?'var(--green)':type==='expense'?'var(--red)':'var(--purple)';
-
-  // For savings group by fromBank; for expenses two-level (cat > subcat); for income by cat
-  const groupKey = en => {
-    if (type==='savings') return bankName(en.fromBankId) || 'Unlinked';
-    return en.cat || 'Uncategorized';
-  };
-
-  // Early empty state only for income (expense and savings always render their template)
-  if (!entries.length && type === 'income') {
-    wrap.innerHTML = `
-      <div class="section-header-bar"><span class="sh-title">${label}</span><span class="sh-total" style="color:${tColor}">${php(0)}</span></div>
-      <div class="table-card"><div class="empty-state">No income entries for this period.
-      <br><button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="openEntryModal()">+ Add entry</button></div></div>`;
-    return;
-  }
-
-  let rows = '', grand = 0, catSummaries = [];
-
-  if (type === 'expense') {
-    const groups = S.cats.expense || [];
-    const knownMainCats = groups.map(g => g.name);
-    const orphanEntries = entries.filter(en => !knownMainCats.includes(en.cat||''));
-
-    groups.forEach(group => {
-      const mainEntries = entries.filter(en => (en.cat||'') === group.name);
-      const mainTotal   = mainEntries.reduce((s,e) => s+(e.amount||0)+(e.fee||0), 0);
-      grand += mainTotal;
-      if (mainTotal > 0) catSummaries.push(`${esc(group.name)}: ${php(mainTotal)}`);
-
-      // ── MAIN CATEGORY HEADER ROW ──────────────────────────────────────
-      rows += `<tr><td colspan="6" style="background:var(--surface2);padding:10px 16px;border-bottom:1px solid var(--border)">
-        <div style="display:flex;align-items:center;justify-content:space-between">
-          <span style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text2)">${esc(group.name)}</span>
-          <div style="display:flex;align-items:center;gap:10px">
-            ${mainTotal > 0 ? `<span style="font-size:13px;font-weight:600;color:var(--red)">${php(mainTotal)}</span>` : ''}
-            <button class="btn btn-ghost btn-xs" onclick="openEntryModalForSub('${esc(group.name)}','')">+ Add</button>
-          </div>
-        </div>
-      </td></tr>`;
-
-      const knownSubs = group.subs || [];
-
-      // Entries that match this group (flat, no sub-header)
-      mainEntries.forEach(en => rows += buildEntryRow(en, type, tColor));
-
-      // Sub-categories with NO entries → show as placeholder reminder rows
-      knownSubs.forEach(sub => {
-        const hasEntry = mainEntries.some(en => (en.subcat||'') === sub);
-        if (!hasEntry) {
-          rows += `<tr style="opacity:.6">
-            <td style="padding:9px 16px;color:var(--text3);font-size:13px">${esc(sub)}</td>
-            <td colspan="4" style="padding:9px 12px;color:var(--text3);font-size:12px;font-style:italic">no entries</td>
-            <td style="padding:9px 12px">
-              <button class="btn btn-ghost btn-xs" onclick="openEntryModalForSub('${esc(group.name)}','${esc(sub)}')">+ Add</button>
-            </td>
-          </tr>`;
-        }
+function renderSectionTable(type,entries,sectionTotal,wrapperId){
+  const wrap=document.getElementById(wrapperId);
+  const label=type==='income'?'Income':type==='expense'?'Expenses':'Savings';
+  const tColor=type==='income'?'var(--green)':type==='expense'?'var(--red)':'var(--purple)';
+  const groupKey=en=>{ if(type==='savings')return bankName(en.fromBankId)||'Unlinked'; return en.cat||'Uncategorized'; };
+  if(!entries.length&&type==='income'){wrap.innerHTML=`<div class="section-header-bar"><span class="sh-title">${label}</span><span class="sh-total" style="color:${tColor}">${php(0)}</span></div><div class="table-card"><div class="empty-state">No income entries.<br><button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="openEntryModal()">+ Add entry</button></div></div>`;return;}
+  let rows='',grand=0,catSummaries=[];
+  if(type==='expense'){
+    const groups=S.cats.expense||[];
+    const knownMains=groups.map(g=>g.name);
+    const orphans=entries.filter(en=>!knownMains.includes(en.cat||''));
+    groups.forEach(group=>{
+      const mEntries=entries.filter(en=>(en.cat||'')===group.name);
+      const mTotal=mEntries.reduce((s,e)=>s+(e.amount||0)+(e.fee||0),0);
+      grand+=mTotal; if(mTotal>0)catSummaries.push(`${esc(group.name)}: ${php(mTotal)}`);
+      rows+=`<tr><td colspan="6" style="background:var(--surface2);padding:10px 16px;border-bottom:1px solid var(--border)"><div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text2)">${esc(group.name)}</span><div style="display:flex;align-items:center;gap:10px">${mTotal>0?`<span style="font-size:13px;font-weight:600;color:var(--red)">${php(mTotal)}</span>`:''}<button class="btn btn-ghost btn-xs" onclick="openEntryModalForSub('${esc(group.name)}','')">+ Add</button></div></div></td></tr>`;
+      mEntries.forEach(en=>rows+=buildEntryRow(en,type,tColor));
+      (group.subs||[]).forEach(sub=>{
+        const hasEntry=mEntries.some(en=>(en.subcat||'')===sub);
+        if(!hasEntry) rows+=`<tr style="opacity:.6"><td style="padding:9px 16px;color:var(--text3);font-size:13px">${esc(sub)}</td><td colspan="4" style="padding:9px 12px;color:var(--text3);font-size:12px;font-style:italic">no entries</td><td style="padding:9px 12px"><button class="btn btn-ghost btn-xs" onclick="openEntryModalForSub('${esc(group.name)}','${esc(sub)}')">+ Add</button></td></tr>`;
       });
-
-      // Main total — only if entries exist
-      if (mainTotal > 0) {
-        rows += `<tr style="background:var(--surface2)"><td colspan="2" style="padding:8px 16px;font-size:12px;font-weight:600;color:var(--text2)">Total &middot; ${esc(group.name)}</td><td colspan="4" style="padding:8px 16px 8px 12px;text-align:right;font-weight:700;color:var(--red)">${php(mainTotal)}</td></tr>`;
-      }
+      if(mTotal>0) rows+=`<tr style="background:var(--surface2)"><td colspan="2" style="padding:8px 16px;font-size:12px;font-weight:600;color:var(--text2)">Total &middot; ${esc(group.name)}</td><td colspan="4" style="padding:8px 16px;text-align:right;font-weight:700;color:var(--red)">${php(mTotal)}</td></tr>`;
     });
-
-    // Orphan entries (cat not in any defined group)
-    if (orphanEntries.length) {
-      const oTotal = orphanEntries.reduce((s,e) => s+(e.amount||0)+(e.fee||0), 0);
-      grand += oTotal;
-      rows += `<tr><td colspan="6" style="background:var(--surface2);padding:10px 16px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text3);border-bottom:1px solid var(--border)">Other</td></tr>`;
-      orphanEntries.forEach(en => rows += buildEntryRow(en, type, tColor));
-    }
-
-  } else if (type === 'savings') {
-    // Always show all bank accounts as headers (grouped by destination bank - toBankId)
-    // so users see their savings targets even with no entries yet
-    const knownBankIds = S.banks.map(b => b.id);
-    const orphanEntries = entries.filter(en => !knownBankIds.includes(en.toBankId||''));
-
-    S.banks.forEach(bank => {
-      const bankEntries = entries.filter(en => en.toBankId === bank.id);
-      const bankTotal   = bankEntries.reduce((s,e) => s+(e.amount||0), 0);
-      grand += bankTotal;
-      if (bankTotal > 0) catSummaries.push(`${esc(bank.name)}: ${php(bankTotal)}`);
-
-      // Bank header row — always shown
-      rows += `<tr><td colspan="6" style="background:var(--surface2);padding:10px 16px;border-bottom:1px solid var(--border)">
-        <div style="display:flex;align-items:center;justify-content:space-between">
-          <div style="display:flex;align-items:center;gap:8px">
-            <span style="width:8px;height:8px;border-radius:50%;background:${bank.color};display:inline-block;flex-shrink:0"></span>
-            <span style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text2)">${esc(bank.name)}</span>
-            <span style="font-size:11px;color:var(--text3)">(${esc(bank.bank||'Account')})</span>
-          </div>
-          <div style="display:flex;align-items:center;gap:10px">
-            ${bankTotal > 0 ? `<span style="font-size:13px;font-weight:600;color:var(--purple)">${php(bankTotal)}</span>` : ''}
-            <button class="btn btn-ghost btn-xs" onclick="openEntryModalForBank('${bank.id}')">+ Add</button>
-          </div>
-        </div>
-      </td></tr>`;
-
-      if (bankEntries.length > 0) {
-        // Flat entry rows
-        bankEntries.forEach(en => rows += buildEntryRow(en, type, tColor));
-        rows += `<tr style="background:var(--surface2)"><td colspan="2" style="padding:8px 16px;font-size:12px;font-weight:600;color:var(--text2)">Total &middot; ${esc(bank.name)}</td><td colspan="4" style="padding:8px 16px 8px 12px;text-align:right;font-weight:700;color:var(--purple)">${php(bankTotal)}</td></tr>`;
-      } else {
-        // Placeholder row
-        rows += `<tr style="opacity:.6">
-          <td style="padding:9px 16px;color:var(--text3);font-size:13px">${esc(bank.name)}</td>
-          <td colspan="4" style="padding:9px 12px;color:var(--text3);font-size:12px;font-style:italic">no entries</td>
-          <td style="padding:9px 12px"><button class="btn btn-ghost btn-xs" onclick="openEntryModalForBank('${bank.id}')">+ Add</button></td>
-        </tr>`;
-      }
+    if(orphans.length){const oT=orphans.reduce((s,e)=>s+(e.amount||0)+(e.fee||0),0);grand+=oT;rows+=`<tr><td colspan="6" style="background:var(--surface2);padding:10px 16px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text3);border-bottom:1px solid var(--border)">Other</td></tr>`;orphans.forEach(en=>rows+=buildEntryRow(en,type,tColor));}
+  } else if(type==='savings'){
+    const knownIds=S.banks.map(b=>b.id);
+    const orphans=entries.filter(en=>!knownIds.includes(en.toBankId||''));
+    S.banks.forEach(bank=>{
+      const bEntries=entries.filter(en=>en.toBankId===bank.id);
+      const bTotal=bEntries.reduce((s,e)=>s+(e.amount||0),0);
+      grand+=bTotal; if(bTotal>0)catSummaries.push(`${esc(bank.name)}: ${php(bTotal)}`);
+      rows+=`<tr><td colspan="6" style="background:var(--surface2);padding:10px 16px;border-bottom:1px solid var(--border)"><div style="display:flex;align-items:center;justify-content:space-between"><div style="display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border-radius:50%;background:${bank.color};display:inline-block;flex-shrink:0"></span><span style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text2)">${esc(bank.name)}</span><span style="font-size:11px;color:var(--text3)">(${esc(bank.bank||'Account')})</span></div><div style="display:flex;align-items:center;gap:10px">${bTotal>0?`<span style="font-size:13px;font-weight:600;color:var(--purple)">${php(bTotal)}</span>`:''}<button class="btn btn-ghost btn-xs" onclick="openEntryModalForBank('${bank.id}')">+ Add</button></div></div></td></tr>`;
+      if(bEntries.length>0){bEntries.forEach(en=>rows+=buildEntryRow(en,type,tColor));rows+=`<tr style="background:var(--surface2)"><td colspan="2" style="padding:8px 16px;font-size:12px;font-weight:600;color:var(--text2)">Total &middot; ${esc(bank.name)}</td><td colspan="4" style="padding:8px 16px;text-align:right;font-weight:700;color:var(--purple)">${php(bTotal)}</td></tr>`;}
+      else rows+=`<tr style="opacity:.6"><td style="padding:9px 16px;color:var(--text3);font-size:13px">${esc(bank.name)}</td><td colspan="4" style="padding:9px 12px;color:var(--text3);font-size:12px;font-style:italic">no entries</td><td style="padding:9px 12px"><button class="btn btn-ghost btn-xs" onclick="openEntryModalForBank('${bank.id}')">+ Add</button></td></tr>`;
     });
-
-    // Orphan entries (toBankId not in any defined bank)
-    if (orphanEntries.length) {
-      const oTotal = orphanEntries.reduce((s,e) => s+(e.amount||0), 0);
-      grand += oTotal;
-      rows += `<tr><td colspan="6" style="background:var(--surface2);padding:10px 16px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text3);border-bottom:1px solid var(--border)">Other</td></tr>`;
-      orphanEntries.forEach(en => rows += buildEntryRow(en, type, tColor));
-    }
-
+    if(orphans.length){const oT=orphans.reduce((s,e)=>s+(e.amount||0),0);grand+=oT;rows+=`<tr><td colspan="6" style="background:var(--surface2);padding:10px 16px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text3);border-bottom:1px solid var(--border)">Other</td></tr>`;orphans.forEach(en=>rows+=buildEntryRow(en,type,tColor));}
   } else {
-    // Income — single-level grouping by category
-    const cats = [...new Set(entries.map(groupKey))];
-    if (!cats.length) {
-      wrap.innerHTML = `
-        <div class="section-header-bar"><span class="sh-title">${label}</span><span class="sh-total" style="color:${tColor}">${php(0)}</span></div>
-        <div class="table-card"><div class="empty-state">No income entries for this period.
-        <br><button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="openEntryModal()">+ Add entry</button></div></div>`;
-      return;
-    }
-    cats.forEach(cat => {
-      const ces    = entries.filter(en=>groupKey(en)===cat);
-      const catTot = ces.reduce((s,e)=>s+(e.amount||0)+(e.fee||0),0);
-      grand += catTot;
-      catSummaries.push(`${esc(cat)}: ${php(catTot)}`);
-      rows += `<tr class="cat-header-row"><td colspan="7">${esc(cat)}</td></tr>`;
-      ces.forEach(en => rows += buildEntryRow(en, type, tColor));
-      rows += `<tr class="cat-total-row"><td colspan="2">Total &middot; ${esc(cat)}</td><td colspan="5" style="text-align:right;padding-right:16px;font-weight:600">${php(catTot)}</td></tr>`;
+    const cats=[...new Set(entries.map(groupKey))];
+    if(!cats.length){wrap.innerHTML=`<div class="section-header-bar"><span class="sh-title">${label}</span><span class="sh-total" style="color:${tColor}">${php(0)}</span></div><div class="table-card"><div class="empty-state">No entries.<br><button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="openEntryModal()">+ Add entry</button></div></div>`;return;}
+    cats.forEach(cat=>{
+      const ces=entries.filter(en=>groupKey(en)===cat);
+      const catTot=ces.reduce((s,e)=>s+(e.amount||0)+(e.fee||0),0);
+      grand+=catTot;catSummaries.push(`${esc(cat)}: ${php(catTot)}`);
+      rows+=`<tr class="cat-header-row"><td colspan="7">${esc(cat)}</td></tr>`;
+      ces.forEach(en=>rows+=buildEntryRow(en,type,tColor));
+      rows+=`<tr class="cat-total-row"><td colspan="2">Total &middot; ${esc(cat)}</td><td colspan="5" style="text-align:right;padding-right:16px;font-weight:600">${php(catTot)}</td></tr>`;
     });
   }
-
-  wrap.innerHTML = `
-    <div class="section-header-bar">
-      <div>
-        <span class="sh-title">${label}</span>
-        <span class="sh-cats">${catSummaries.join(' &nbsp;&middot;&nbsp; ')}</span>
-      </div>
-      <span class="sh-total" style="color:${tColor}">${php(sectionTotal)}</span>
-    </div>
-    <div class="table-card">
-      <table>
-        <thead><tr>
-          <th>Name</th>
-          <th>${type==='savings'?'From &rarr; To':type==='expense'?'Bank account':' Bank account'}</th>
-          <th>Amount</th><th>Date</th><th>Status</th><th></th>
-        </tr></thead>
-        <tbody>${rows}</tbody>
-      </table>
-    </div>`;
+  wrap.innerHTML=`<div class="section-header-bar"><div><span class="sh-title">${label}</span><span class="sh-cats">${catSummaries.join(' &nbsp;&middot;&nbsp; ')}</span></div><span class="sh-total" style="color:${tColor}">${php(sectionTotal)}</span></div><div class="table-card"><table><thead><tr><th>Name</th><th>${type==='savings'?'From &rarr; To':'Bank account'}</th><th>Amount</th><th>Date</th><th>Status</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
 // ============================================================
 // CATEGORIES
 // ============================================================
-function renderCategories() {
-  // Income — flat list
-  const incEl = document.getElementById('cat-income-list');
-  incEl.innerHTML = (S.cats.income||[]).map((c,i)=>`
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:var(--surface2);border-radius:7px;margin-bottom:6px;font-size:13px">
-      <span>${esc(c)}</span>
-      <button class="btn btn-danger btn-xs" onclick="deleteCat('income',${i})">&#10005;</button>
-    </div>`).join('') || '<div style="color:var(--text3);font-size:12px;padding:8px 0">No categories yet</div>';
-
-  // Expense — two-level
-  const expEl = document.getElementById('cat-expense-list');
-  const groups = S.cats.expense || [];
-  if (!groups.length) {
-    expEl.innerHTML = '<div style="color:var(--text3);font-size:12px;padding:8px 0">No expense categories yet.</div>';
-  } else {
-    expEl.innerHTML = groups.map((g, gi) => `
-      <div style="border:1px solid var(--border);border-radius:var(--r-lg);margin-bottom:14px;overflow:hidden">
-        <!-- Main category header -->
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--surface2);border-bottom:1px solid var(--border)">
-          <strong style="font-size:13px">${esc(g.name)}</strong>
-          <button class="btn btn-danger btn-xs" onclick="deleteExpenseMainCat(${gi})" title="Delete main category">&#10005;</button>
-        </div>
-        <!-- Sub-categories -->
-        <div style="padding:10px 14px">
-          ${(g.subs||[]).map((s,si)=>`
-            <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:var(--surface3);border-radius:7px;margin-bottom:6px;font-size:13px">
-              <span style="color:var(--text2)">&nbsp;&nbsp;${esc(s)}</span>
-              <button class="btn btn-danger btn-xs" onclick="deleteExpenseSub(${gi},${si})">&#10005;</button>
-            </div>`).join('') || '<div style="color:var(--text3);font-size:12px;padding:4px 0 8px">No sub-categories yet</div>'}
-          <div class="cat-input-row" style="margin-top:4px">
-            <input type="text" id="sub-input-${gi}" placeholder="Add sub-category&hellip;" onkeydown="if(event.key==='Enter')addExpenseSub(${gi})">
-            <button class="btn btn-green btn-sm" onclick="addExpenseSub(${gi})">Add</button>
-          </div>
-        </div>
-      </div>`).join('');
-  }
-
-  // Savings readonly
-  document.getElementById('cat-savings-readonly').innerHTML = S.banks.length
-    ? S.banks.map(b=>`<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--surface2);border-radius:7px;margin-bottom:6px;font-size:13px"><span style="width:8px;height:8px;border-radius:50%;background:${b.color};display:inline-block;flex-shrink:0"></span>${esc(b.name)} <span style="color:var(--text3)">(${esc(b.bank||'Account')})</span></div>`).join('')
-    : '<div style="color:var(--text3);font-size:12px;padding:8px 0">Add bank accounts in the Dashboard.</div>';
+function renderCategories(){
+  const incEl=document.getElementById('cat-income-list');
+  incEl.innerHTML=(S.cats.income||[]).map((c,i)=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:var(--surface2);border-radius:7px;margin-bottom:6px;font-size:13px"><span>${esc(c)}</span><button class="btn btn-danger btn-xs" onclick="deleteCat('income',${i})">&#10005;</button></div>`).join('')||'<div style="color:var(--text3);font-size:12px;padding:8px 0">No categories yet</div>';
+  const expEl=document.getElementById('cat-expense-list');
+  const groups=S.cats.expense||[];
+  expEl.innerHTML=groups.length?groups.map((g,gi)=>`<div style="border:1px solid var(--border);border-radius:var(--r-lg);margin-bottom:14px;overflow:hidden"><div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--surface2);border-bottom:1px solid var(--border)"><strong style="font-size:13px">${esc(g.name)}</strong><button class="btn btn-danger btn-xs" onclick="deleteExpenseMainCat(${gi})">&#10005;</button></div><div style="padding:10px 14px">${(g.subs||[]).map((s,si)=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:var(--surface3);border-radius:7px;margin-bottom:6px;font-size:13px"><span style="color:var(--text2)">&nbsp;&nbsp;${esc(s)}</span><button class="btn btn-danger btn-xs" onclick="deleteExpenseSub(${gi},${si})">&#10005;</button></div>`).join('')||'<div style="color:var(--text3);font-size:12px;padding:4px 0 8px">No sub-categories yet</div>'}<div class="cat-input-row"><input type="text" id="sub-input-${gi}" placeholder="Add sub-category&hellip;" onkeydown="if(event.key==='Enter')addExpenseSub(${gi})"><button class="btn btn-green btn-sm" onclick="addExpenseSub(${gi})">Add</button></div></div></div>`).join(''):'<div style="color:var(--text3);font-size:12px;padding:8px 0">No expense categories yet.</div>';
+  document.getElementById('cat-savings-readonly').innerHTML=S.banks.length?S.banks.map(b=>`<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--surface2);border-radius:7px;margin-bottom:6px;font-size:13px"><span style="width:8px;height:8px;border-radius:50%;background:${b.color};display:inline-block;flex-shrink:0"></span>${esc(b.name)} <span style="color:var(--text3)">(${esc(b.bank||'Account')})</span></div>`).join(''):'<div style="color:var(--text3);font-size:12px;padding:8px 0">Add bank accounts in the Dashboard.</div>';
 }
 
-function addCat(type) {
-  // Only for income now
-  const inp = document.getElementById('cat-income-input');
-  const val = inp.value.trim();
-  if (!val) return;
-  if (!S.cats.income) S.cats.income = [];
-  if (S.cats.income.includes(val)) { toast('Already exists.','err'); return; }
-  S.cats.income.push(val); inp.value='';
-  save(); renderCategories(); toast('Category added!');
+async function addCat(type){
+  const inp=document.getElementById('cat-income-input');
+  const val=inp.value.trim();if(!val)return;
+  if(!S.cats.income)S.cats.income=[];
+  if(S.cats.income.includes(val)){toast('Already exists.','err');return;}
+  S.cats.income.push(val);inp.value='';
+  await saveCats();renderCategories();toast('Category added!');
 }
-function deleteCat(type, idx) {
-  S.cats[type].splice(idx, 1);
-  save(); renderCategories();
+async function deleteCat(type,idx){S.cats[type].splice(idx,1);await saveCats();renderCategories();}
+async function addExpenseMainCat(){
+  const name=prompt('Main category name:');if(!name||!name.trim())return;
+  if(!S.cats.expense)S.cats.expense=[];
+  if(S.cats.expense.find(g=>g.name===name.trim())){toast('Already exists.','err');return;}
+  S.cats.expense.push({name:name.trim(),subs:[]});
+  await saveCats();renderCategories();toast('Main category added!');
 }
-
-function addExpenseMainCat() {
-  const name = prompt('Main category name (e.g. Fixed Expenses):');
-  if (!name || !name.trim()) return;
-  if (!S.cats.expense) S.cats.expense = [];
-  if (S.cats.expense.find(g=>g.name===name.trim())) { toast('Already exists.','err'); return; }
-  S.cats.expense.push({ name: name.trim(), subs: [] });
-  save(); renderCategories(); toast('Main category added!');
+async function deleteExpenseMainCat(gi){if(!confirm('Delete this category?'))return;S.cats.expense.splice(gi,1);await saveCats();renderCategories();}
+async function addExpenseSub(gi){
+  const inp=document.getElementById(`sub-input-${gi}`);
+  const val=inp.value.trim();if(!val)return;
+  if(!S.cats.expense[gi].subs)S.cats.expense[gi].subs=[];
+  if(S.cats.expense[gi].subs.includes(val)){toast('Already exists.','err');return;}
+  S.cats.expense[gi].subs.push(val);inp.value='';
+  await saveCats();renderCategories();toast('Sub-category added!');
 }
-function deleteExpenseMainCat(gi) {
-  if (!confirm('Delete this category and all its sub-categories?')) return;
-  S.cats.expense.splice(gi, 1);
-  save(); renderCategories(); toast('Category deleted.');
-}
-function addExpenseSub(gi) {
-  const inp = document.getElementById(`sub-input-${gi}`);
-  const val = inp.value.trim();
-  if (!val) return;
-  if (!S.cats.expense[gi].subs) S.cats.expense[gi].subs = [];
-  if (S.cats.expense[gi].subs.includes(val)) { toast('Already exists.','err'); return; }
-  S.cats.expense[gi].subs.push(val); inp.value='';
-  save(); renderCategories(); toast('Sub-category added!');
-}
-function deleteExpenseSub(gi, si) {
-  S.cats.expense[gi].subs.splice(si, 1);
-  save(); renderCategories();
-}
+async function deleteExpenseSub(gi,si){S.cats.expense[gi].subs.splice(si,1);await saveCats();renderCategories();}
 
 // ============================================================
 // NOTES
 // ============================================================
-let editingNoteId=null, currentNoteTags=[], currentNoteColor='';
-function openNoteModal(id) {
-  editingNoteId=id||null; currentNoteTags=[]; currentNoteColor='';
-  if (id) {
-    const n=S.notes.find(x=>x.id===id);
-    document.getElementById('note-modal-title').textContent='Edit note';
-    document.getElementById('note-title-input').value=n.title;
-    document.getElementById('note-body-input').value=n.body;
-    document.getElementById('note-pin-check').checked=n.pinned||false;
-    currentNoteTags=[...(n.tags||[])]; currentNoteColor=n.color||'';
-  } else {
-    document.getElementById('note-modal-title').textContent='New note';
-    document.getElementById('note-title-input').value='';
-    document.getElementById('note-body-input').value='';
-    document.getElementById('note-pin-check').checked=false;
-  }
-  document.getElementById('note-tag-input').value='';
-  renderTagPills();
+let editingNoteId=null,currentNoteTags=[],currentNoteColor='';
+function openNoteModal(id){
+  editingNoteId=id||null;currentNoteTags=[];currentNoteColor='';
+  if(id){const n=S.notes.find(x=>x.id===id);document.getElementById('note-modal-title').textContent='Edit note';document.getElementById('note-title-input').value=n.title;document.getElementById('note-body-input').value=n.body;document.getElementById('note-pin-check').checked=n.pinned||false;currentNoteTags=[...(n.tags||[])];currentNoteColor=n.color||'';}
+  else{document.getElementById('note-modal-title').textContent='New note';document.getElementById('note-title-input').value='';document.getElementById('note-body-input').value='';document.getElementById('note-pin-check').checked=false;}
+  document.getElementById('note-tag-input').value='';renderTagPills();
   document.querySelectorAll('.swatch').forEach(s=>s.classList.toggle('selected',s.dataset.color===currentNoteColor));
   document.getElementById('note-modal').classList.add('open');
   setTimeout(()=>document.getElementById('note-title-input').focus(),100);
 }
-function closeNoteModal() { document.getElementById('note-modal').classList.remove('open'); }
-function handleTagInput(e) {
-  if (e.key!=='Enter') return; e.preventDefault();
-  const val=e.target.value.trim().toLowerCase().replace(/\s+/g,'-');
-  if (!val||currentNoteTags.includes(val)){e.target.value='';return;}
-  currentNoteTags.push(val); e.target.value=''; renderTagPills();
-}
+function closeNoteModal(){document.getElementById('note-modal').classList.remove('open');}
+function handleTagInput(e){if(e.key!=='Enter')return;e.preventDefault();const val=e.target.value.trim().toLowerCase().replace(/\s+/g,'-');if(!val||currentNoteTags.includes(val)){e.target.value='';return;}currentNoteTags.push(val);e.target.value='';renderTagPills();}
 function removeTag(tag){currentNoteTags=currentNoteTags.filter(t=>t!==tag);renderTagPills();}
-function renderTagPills(){
-  document.getElementById('note-tag-pills').innerHTML=currentNoteTags.map(t=>`<div class="tag-pill">${esc(t)}<button onclick="removeTag('${esc(t)}')">&times;</button></div>`).join('');
-}
-function selectNoteColor(el,color){
-  currentNoteColor=color;
-  document.querySelectorAll('.swatch').forEach(s=>s.classList.remove('selected'));
-  el.classList.add('selected');
-}
-function saveNote(){
+function renderTagPills(){document.getElementById('note-tag-pills').innerHTML=currentNoteTags.map(t=>`<div class="tag-pill">${esc(t)}<button onclick="removeTag('${esc(t)}')">&times;</button></div>`).join('');}
+function selectNoteColor(el,color){currentNoteColor=color;document.querySelectorAll('.swatch').forEach(s=>s.classList.remove('selected'));el.classList.add('selected');}
+async function saveNote(){
   const title=document.getElementById('note-title-input').value.trim();
   const body=document.getElementById('note-body-input').value.trim();
-  if (!title&&!body){toast('Write something first!','err');return;}
-  const now=new Date().toISOString();
-  const obj={title:title||'Untitled',body,tags:[...currentNoteTags],color:currentNoteColor,pinned:document.getElementById('note-pin-check').checked,updatedAt:now};
-  if (editingNoteId) Object.assign(S.notes.find(x=>x.id===editingNoteId),obj);
-  else S.notes.push({id:uid(),createdAt:now,...obj});
-  save();closeNoteModal();renderNotes();toast('Note saved!');
+  if(!title&&!body){toast('Write something first!','err');return;}
+  const obj={title:title||'Untitled',body,tags:[...currentNoteTags],color:currentNoteColor,pinned:document.getElementById('note-pin-check').checked};
+  if(editingNoteId){Object.assign(S.notes.find(x=>x.id===editingNoteId),{...obj,updatedAt:new Date().toISOString()});await dbSaveNote({...obj,id:editingNoteId});}
+  else{const newId=await dbSaveNote({...obj,_isNew:true});if(newId)S.notes.unshift({...obj,id:newId,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});}
+  closeNoteModal();renderNotes();toast('Note saved!');
 }
-function deleteNote(id){if(!confirm('Delete this note?'))return;S.notes=S.notes.filter(n=>n.id!==id);save();renderNotes();}
-function togglePin(id){const n=S.notes.find(x=>x.id===id);if(n){n.pinned=!n.pinned;n.updatedAt=new Date().toISOString();}save();renderNotes();}
+async function deleteNote(id){if(!confirm('Delete this note?'))return;S.notes=S.notes.filter(n=>n.id!==id);await dbDeleteNote(id);renderNotes();}
+async function togglePin(id){const n=S.notes.find(x=>x.id===id);if(n){n.pinned=!n.pinned;n.updatedAt=new Date().toISOString();await dbSaveNote({...n});}renderNotes();}
 function renderNotes(){
   const q=(document.getElementById('notes-search')?.value||'').toLowerCase();
   const tf=document.getElementById('notes-filter-tag')?.value||'';
   const sort=document.getElementById('notes-sort')?.value||'updated';
   const allTags=[...new Set(S.notes.flatMap(n=>n.tags||[]))].sort();
-  const tagSel=document.getElementById('notes-filter-tag');
-  const prev=tagSel.value;
+  const tagSel=document.getElementById('notes-filter-tag');const prev=tagSel.value;
   tagSel.innerHTML='<option value="">All tags</option>'+allTags.map(t=>`<option value="${t}"${t===prev?' selected':''}>${t}</option>`).join('');
-  let notes=S.notes.filter(n=>{
-    const mq=!q||n.title.toLowerCase().includes(q)||n.body.toLowerCase().includes(q)||(n.tags||[]).some(t=>t.includes(q));
-    const mt=!tf||(n.tags||[]).includes(tf);
-    return mq&&mt;
-  });
+  let notes=S.notes.filter(n=>{const mq=!q||n.title.toLowerCase().includes(q)||n.body.toLowerCase().includes(q)||(n.tags||[]).some(t=>t.includes(q));const mt=!tf||(n.tags||[]).includes(tf);return mq&&mt;});
   const sf=sort==='title'?(a,b)=>a.title.localeCompare(b.title):sort==='created'?(a,b)=>new Date(b.createdAt)-new Date(a.createdAt):(a,b)=>new Date(b.updatedAt)-new Date(a.updatedAt);
   notes.sort(sf);
   const pinned=notes.filter(n=>n.pinned),rest=notes.filter(n=>!n.pinned);
-  const nHTML=n=>{
-    const bg=n.color?`background:${n.color};`:'';
-    const border=n.pinned?'border-color:var(--gold)':'';
-    const dateStr=new Date(n.updatedAt).toLocaleDateString('en-PH',{weekday:'short',month:'long',day:'numeric',year:'numeric'});
-    const tags=(n.tags||[]).map(t=>`<span class="note-tag">${esc(t)}</span>`).join('');
-    const preview=n.body.length>200?n.body.slice(0,200)+'…':n.body;
-    return `<div class="note-card${n.pinned?' pinned':''}" style="${bg}${border}" onclick="openNoteModal('${n.id}')">
-      ${n.pinned?'<span class="note-pin">\uD83D\uDCCC</span>':''}
-      <div class="note-title">${esc(n.title)}</div>
-      ${preview?`<div class="note-body">${esc(preview)}</div>`:''}
-      <div class="note-footer"><div class="note-tags">${tags}</div><span class="note-date">${dateStr}</span></div>
-      <div class="note-actions" onclick="event.stopPropagation()">
-        <button class="btn btn-ghost btn-xs" onclick="togglePin('${n.id}')">${n.pinned?'Unpin':'Pin'}</button>
-        <button class="btn btn-danger btn-xs" onclick="deleteNote('${n.id}')">Delete</button>
-      </div>
-    </div>`;
-  };
+  const nHTML=n=>{const bg=n.color?`background:${n.color};`:'';const border=n.pinned?'border-color:var(--gold)':'';const dateStr=new Date(n.updatedAt).toLocaleDateString('en-PH',{weekday:'short',month:'long',day:'numeric',year:'numeric'});const tags=(n.tags||[]).map(t=>`<span class="note-tag">${esc(t)}</span>`).join('');const preview=n.body.length>200?n.body.slice(0,200)+'…':n.body;return `<div class="note-card${n.pinned?' pinned':''}" style="${bg}${border}" onclick="openNoteModal('${n.id}')">${n.pinned?'<span class="note-pin">\uD83D\uDCCC</span>':''}<div class="note-title">${esc(n.title)}</div>${preview?`<div class="note-body">${esc(preview)}</div>`:''}<div class="note-footer"><div class="note-tags">${tags}</div><span class="note-date">${dateStr}</span></div><div class="note-actions" onclick="event.stopPropagation()"><button class="btn btn-ghost btn-xs" onclick="togglePin('${n.id}')">${n.pinned?'Unpin':'Pin'}</button><button class="btn btn-danger btn-xs" onclick="deleteNote('${n.id}')">Delete</button></div></div>`;};
   const ps=document.getElementById('notes-pinned-section'),gr=document.getElementById('notes-grid');
-  if (!notes.length){ps.innerHTML='';gr.innerHTML='<div class="empty-state" style="grid-column:1/-1">No notes yet. Click &ldquo;+ New Note&rdquo; to start.</div>';return;}
+  if(!notes.length){ps.innerHTML='';gr.innerHTML='<div class="empty-state" style="grid-column:1/-1">No notes yet.</div>';return;}
   ps.innerHTML=pinned.length?`<div class="notes-section-title">\uD83D\uDCCC Pinned</div><div class="notes-grid" style="margin-bottom:24px">${pinned.map(nHTML).join('')}</div>`:'';
   gr.innerHTML=rest.length?(pinned.length?'<div class="notes-section-title">Notes</div>':'')+rest.map(nHTML).join(''):'';
 }
 
 // ============================================================
-// DRAG & DROP — bank card reordering
+// INIT — listen for auth state changes
 // ============================================================
-let dragSrcId = null;
-
-function onDragStart(e, id) {
-  dragSrcId = id;
-  e.dataTransfer.effectAllowed = 'move';
-  e.dataTransfer.setData('text/plain', id);
-  // slight delay so the card renders before going semi-transparent
-  setTimeout(() => e.target.classList.add('dragging'), 0);
-}
-
-function onDragOver(e) {
-  e.preventDefault();
-  e.dataTransfer.dropEffect = 'move';
-  const card = e.currentTarget;
-  if (card.dataset.id !== dragSrcId) card.classList.add('drag-over');
-}
-
-function onDragLeave(e) {
-  e.currentTarget.classList.remove('drag-over');
-}
-
-function onDrop(e, targetId) {
-  e.preventDefault();
-  e.currentTarget.classList.remove('drag-over');
-  if (!dragSrcId || dragSrcId === targetId) return;
-  const fromIdx = S.banks.findIndex(b => b.id === dragSrcId);
-  const toIdx   = S.banks.findIndex(b => b.id === targetId);
-  if (fromIdx < 0 || toIdx < 0) return;
-  // Reorder
-  const [moved] = S.banks.splice(fromIdx, 1);
-  S.banks.splice(toIdx, 0, moved);
-  save();
-  renderDashboard();
-}
-
-function onDragEnd(e) {
-  dragSrcId = null;
-  document.querySelectorAll('.bank-card').forEach(c => {
-    c.classList.remove('dragging', 'drag-over');
-  });
-}
-
-// ============================================================
-// INIT
-// ============================================================
-document.getElementById('sidebar-date').textContent = new Date().toLocaleDateString('en-PH',{weekday:'short',month:'long',day:'numeric',year:'numeric'});
-// attach savings bank change listeners
-document.getElementById('en-from-bank-savings').addEventListener('change', updateTransferPreview);
-document.getElementById('en-to-bank-savings').addEventListener('change', updateTransferPreview);
-refreshBankSelects();
-renderDashboard();
-renderBudget();
+sb.auth.onAuthStateChange(async (event, session) => {
+  if (session && session.user) {
+    currentUser = session.user;
+    document.getElementById('user-email-display').textContent = currentUser.email;
+    showLoading();
+    await loadUserData();
+    refreshBankSelects();
+    renderDashboard();
+    renderBudget();
+    showApp();
+  } else {
+    currentUser = null;
+    showAuth();
+  }
+});
 </script>
 </body>
 </html>
