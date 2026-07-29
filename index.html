@@ -1064,6 +1064,17 @@ function userKey() {
 function scheduleSave() {
   // Write to user-specific localStorage key (instant feedback)
   if (currentUser) localStorage.setItem(userKey(), JSON.stringify(S));
+  // Mark all pages dirty so they re-render when next visited
+  markDirty('dashboard','budget','placeholder','cashflow','notes','categories');
+  // Re-render the currently visible page immediately
+  if (currentPage === 'dashboard')   renderDashboard();
+  else if (currentPage === 'budget')      renderBudget();
+  else if (currentPage === 'placeholder') renderPlaceholder();
+  else if (currentPage === 'cashflow')    renderCashflow();
+  else if (currentPage === 'notes')      renderNotes();
+  else if (currentPage === 'categories') renderCategories();
+  // Remove current page from dirty since we just rendered it
+  dirtyPages.delete(currentPage);
   // Debounce cloud save by 1.5s (batches rapid changes)
   clearTimeout(syncTimer);
   syncTimer = setTimeout(saveToCloud, 1500);
@@ -1102,6 +1113,8 @@ sb.auth.onAuthStateChange(async (event, session) => {
     const loadTimeout = new Promise(resolve => setTimeout(resolve, 5000));
     const cloudLoad   = loadFromCloud(currentUser.id);
     await Promise.race([cloudLoad, loadTimeout]);
+    // Mark all pages dirty so they render fresh after login
+    markDirty('dashboard','budget','placeholder','cashflow','notes','categories');
     bootApp();
   } else {
     showAuth();
@@ -1215,6 +1228,14 @@ function computeBankBalance(bankId) {
 // ============================================================
 // NAV
 // ============================================================
+// Tracks which pages need re-rendering (dirty = needs render)
+const dirtyPages = new Set(['dashboard','budget','placeholder','cashflow','notes','categories']);
+let currentPage = 'dashboard';
+
+function markDirty(...pages) {
+  pages.forEach(p => dirtyPages.add(p));
+}
+
 function nav(page) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
@@ -1222,9 +1243,13 @@ function nav(page) {
   const order = ['dashboard','budget','placeholder','cashflow','notes','categories'];
   document.querySelectorAll('.nav-item')[order.indexOf(page)]?.classList.add('active');
   updateMobileNav(page);
+  currentPage = page;
   // Scroll main to top on mobile
   const main = document.querySelector('.main');
   if (main) main.scrollTop = 0;
+  // Only re-render if dirty (data changed) — otherwise show cached view instantly
+  if (!dirtyPages.has(page)) return;
+  dirtyPages.delete(page);
   if (page === 'dashboard')   renderDashboard();
   if (page === 'budget')      renderBudget();
   if (page === 'placeholder') renderPlaceholder();
