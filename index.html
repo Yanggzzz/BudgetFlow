@@ -1083,9 +1083,17 @@ function scheduleSave() {
 // ── Auth state listener ───────────────────────────────────────
 // Safety timeout — if Supabase doesn't respond in 6s, show auth screen
 const authTimeout = setTimeout(() => { showAuth(); }, 6000);
+let appBooted = false; // prevent re-booting on token refresh
 
 sb.auth.onAuthStateChange(async (event, session) => {
   clearTimeout(authTimeout);
+
+  // TOKEN_REFRESHED, USER_UPDATED etc. fire silently — don't re-boot the app
+  if (appBooted && session && session.user) {
+    currentUser = session.user; // keep user reference fresh
+    return;
+  }
+
   if (session && session.user) {
     currentUser = session.user;
     document.getElementById('user-email-display').textContent = currentUser.email;
@@ -1106,6 +1114,7 @@ sb.auth.onAuthStateChange(async (event, session) => {
         document.getElementById('en-from-bank-savings').addEventListener('change', updateTransferPreview);
         document.getElementById('en-to-bank-savings').addEventListener('change', updateTransferPreview);
       } catch(e) {}
+      appBooted = true;
       showApp();
     };
 
@@ -1117,6 +1126,7 @@ sb.auth.onAuthStateChange(async (event, session) => {
     markDirty('dashboard','budget','placeholder','cashflow','notes','categories');
     bootApp();
   } else {
+    appBooted = false;
     showAuth();
   }
 });
