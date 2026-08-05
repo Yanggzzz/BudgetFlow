@@ -458,6 +458,13 @@ tbody tr:hover td{background:rgba(255,255,255,.02)}
       <div class="form-group"><label>Confirm password</label><input type="password" id="signup-pw2" placeholder="Repeat password" onkeydown="if(event.key==='Enter')doSignup()"></div>
       <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:4px" onclick="doSignup()">Create account</button>
     </div>
+    <div style="display:flex;align-items:center;gap:10px;margin:20px 0 4px;">
+      <div style="flex:1;height:1px;background:var(--border)"></div>
+      <span style="font-size:11px;color:var(--text3)">or</span>
+      <div style="flex:1;height:1px;background:var(--border)"></div>
+    </div>
+    <button class="btn btn-ghost" style="width:100%;justify-content:center;margin-top:10px" onclick="enterGuestMode()">Continue as Guest</button>
+    <div style="font-size:11.5px;color:var(--text3);text-align:center;margin-top:10px;line-height:1.5">No account needed — explore with sample data.<br>Nothing you enter is saved.</div>
   </div>
 </div>
 
@@ -963,6 +970,7 @@ const SUPA_KEY = 'sb_publishable_OJFiJdPKRbj_2LxMA5-vbw_Vf4lyYML';
 const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
 let currentUser = null;
 let syncTimer   = null;
+let isGuestMode = false;
 
 // Show/hide layers
 function showLoading() {
@@ -1020,12 +1028,80 @@ async function doSignup() {
 }
 
 async function doLogout() {
-  await sb.auth.signOut();
-  currentUser = null;
+  if (!isGuestMode) { try { await sb.auth.signOut(); } catch(e) {} }
+  currentUser  = null;
+  isGuestMode  = false;
+  appBooted    = false;
   // Clear ALL local data so the next user starts fresh
   localStorage.removeItem(DB_KEY);
   S = initState({});
   showAuth();
+}
+
+// ── Guest mode — explore with sample data, nothing touches Supabase ──
+function demoGuestData() {
+  const today = new Date();
+  const iso = (daysAgo) => { const d = new Date(today); d.setDate(d.getDate()-daysAgo); return d.toISOString().slice(0,10); };
+  const bankChecking = 'demo-checking';
+  const bankSavings  = 'demo-savings';
+  const bankCash     = 'demo-cash';
+  return {
+    banks: [
+      { id: bankChecking, name: 'BPI Checking',  bank: 'BPI',        desc: 'Everyday spending', baseBalance: 18500, goal: 0,     date: iso(120), color: 'var(--accent)' },
+      { id: bankSavings,  name: 'Emergency Fund', bank: 'BDO',        desc: 'Rainy day fund',    baseBalance: 42000, goal: 100000, date: iso(300), color: '#7c9a92' },
+      { id: bankCash,     name: 'Cash on Hand',   bank: 'Cash',       desc: 'Wallet',            baseBalance: 2500,  goal: 0,     date: iso(60),  color: '#c9a15a' }
+    ],
+    entries: [
+      { id: 'demo-e1', type: 'income',  name: 'Salary',        amount: 32000, fee: 0,   date: iso(5),  cat: 'Salary',    subcat: '',            status: 'received',    notes: '', fromBankId: '', toBankId: bankChecking },
+      { id: 'demo-e2', type: 'income',  name: 'Freelance',     amount: 6500,  fee: 0,   date: iso(12), cat: 'Freelance', subcat: '',            status: 'received',    notes: '', fromBankId: '', toBankId: bankChecking },
+      { id: 'demo-e3', type: 'expense', name: 'Rent',          amount: 9000,  fee: 0,   date: iso(4),  cat: 'Fixed Expenses',     subcat: 'Rent',        status: 'spent', notes: '', fromBankId: bankChecking, toBankId: '' },
+      { id: 'demo-e4', type: 'expense', name: 'Electricity',   amount: 1800,  fee: 0,   date: iso(6),  cat: 'Fixed Expenses',     subcat: 'Utilities',   status: 'spent', notes: '', fromBankId: bankChecking, toBankId: '' },
+      { id: 'demo-e5', type: 'expense', name: 'Groceries',     amount: 3200,  fee: 0,   date: iso(2),  cat: 'Lifestyle Expenses', subcat: 'Food',        status: 'spent', notes: '', fromBankId: bankChecking, toBankId: '' },
+      { id: 'demo-e6', type: 'expense', name: 'Grab',          amount: 640,   fee: 0,   date: iso(1),  cat: 'Lifestyle Expenses', subcat: 'Transport',   status: 'spent', notes: '', fromBankId: bankCash,     toBankId: '' },
+      { id: 'demo-e7', type: 'savings', name: 'Emergency Fund',amount: 5000,  fee: 0,   date: iso(5),  cat: '',          subcat: '',            status: 'transferred', notes: '', fromBankId: bankChecking, toBankId: bankSavings }
+    ],
+    notes: [
+      { id: 'demo-n1', createdAt: iso(10), title: 'Guest mode', body: 'This is sample data — feel free to click around. Nothing here gets saved anywhere.' }
+    ],
+    cats: {
+      income:  ['Salary','Freelance','Business','Other'],
+      expense: [
+        { name: 'Fixed Expenses',     subs: ['Rent','Utilities','Insurance'] },
+        { name: 'Lifestyle Expenses', subs: ['Food','Transport','Entertainment','Shopping'] }
+      ]
+    },
+    placeholders: [],
+    placeholderCats: [
+      { id: 'pc1', name: 'Food',           budget: 5000 },
+      { id: 'pc2', name: 'Transportation', budget: 2000 },
+      { id: 'pc3', name: 'Utilities',      budget: 3000 }
+    ]
+  };
+}
+
+function enterGuestMode() {
+  clearTimeout(authTimeout);
+  currentUser = null;
+  isGuestMode = true;
+  showLoading();
+
+  S = initState(demoGuestData());
+  document.getElementById('user-email-display').textContent = 'Guest Mode';
+
+  const savedTheme = localStorage.getItem('budgetflow_theme');
+  if (savedTheme === 'light') applyTheme(true);
+  refreshBankSelects();
+  markDirty('dashboard','budget','placeholder','cashflow','notes','categories');
+  renderDashboard();
+  renderBudget();
+  document.getElementById('sidebar-date').textContent = new Date().toLocaleDateString('en-PH',{weekday:'short',month:'long',day:'numeric',year:'numeric'});
+  try {
+    document.getElementById('en-from-bank-savings').addEventListener('change', updateTransferPreview);
+    document.getElementById('en-to-bank-savings').addEventListener('change', updateTransferPreview);
+  } catch(e) {}
+  appBooted = true;
+  showApp();
+  toast('Exploring in Guest Mode — changes won\'t be saved.');
 }
 
 // ── Cloud sync ────────────────────────────────────────────────
