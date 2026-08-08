@@ -423,6 +423,12 @@ tbody tr:hover td{background:rgba(255,255,255,.02)}
   .cf-filter-btn{font-size:11px;padding:4px 10px}
 }
 
+
+/* Inactivity warning banner */
+.inactivity-warning{display:none;position:fixed;top:0;left:0;right:0;z-index:9999;background:#D97706;color:#fff;padding:10px 20px;text-align:center;font-size:13px;font-family:'Sora',sans-serif;align-items:center;justify-content:center;gap:12px}
+.inactivity-warning.show{display:flex}
+.inactivity-warning button{padding:4px 12px;border:1px solid rgba(255,255,255,.6);background:transparent;color:#fff;border-radius:6px;cursor:pointer;font-family:'Sora',sans-serif;font-size:12px}
+.inactivity-warning button:hover{background:rgba(255,255,255,.2)}
 </style>
 </head>
 <body>
@@ -470,6 +476,12 @@ tbody tr:hover td{background:rgba(255,255,255,.02)}
 
 <!-- APP WRAPPER (hidden until authed) -->
 <div id="app-wrapper" style="display:none;width:100%;height:100vh;overflow:hidden;display:none">
+<!-- INACTIVITY WARNING BANNER -->
+<div class="inactivity-warning" id="inactivity-warning">
+  ⚠️ You will be logged out in <span id="inactivity-countdown">60</span> seconds due to inactivity.
+  <button onclick="stayLoggedIn()">Stay logged in</button>
+</div>
+
 <aside class="sidebar">
   <div class="logo"><h1>BudgetFlow</h1><span>PH &middot; Personal Finance</span></div>
   <div class="nav-section">Main</div>
@@ -967,7 +979,13 @@ tbody tr:hover td{background:rgba(255,255,255,.02)}
 // ============================================================
 const SUPA_URL = 'https://bylzebblmrrqxuebazgv.supabase.co';
 const SUPA_KEY = 'sb_publishable_OJFiJdPKRbj_2LxMA5-vbw_Vf4lyYML';
-const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+const sb = supabase.createClient(SUPA_URL, SUPA_KEY, {
+  auth: {
+    persistSession: false,   // Session clears on browser close — prevents auto-login as someone else
+    autoRefreshToken: true,
+    detectSessionInUrl: true
+  }
+});
 let currentUser = null;
 let syncTimer   = null;
 let isGuestMode = false;
@@ -1028,6 +1046,11 @@ async function doSignup() {
 }
 
 async function doLogout() {
+  // Clear security timers first
+  clearTimeout(inactivityTimer);
+  clearTimeout(warningTimer);
+  clearInterval(countdownInterval);
+  hideInactivityWarning();
   if (!isGuestMode) { try { await sb.auth.signOut(); } catch(e) {} }
   currentUser  = null;
   isGuestMode  = false;
@@ -1192,6 +1215,7 @@ sb.auth.onAuthStateChange(async (event, session) => {
       } catch(e) {}
       appBooted = true;
       showApp();
+      resetInactivityTimer();
     };
 
     // Race: cloud load vs 5s timeout
@@ -3065,6 +3089,86 @@ function closeMobileMore() {
   document.getElementById('mobile-more-panel').classList.remove('open');
   document.getElementById('mobile-more-overlay').classList.remove('open');
 }
+
+
+// ============================================================
+// SECURITY — inactivity auto-logout + session protection
+// ============================================================
+const INACTIVITY_LIMIT = 5 * 60 * 1000;  // 5 min → force logout
+const INACTIVITY_WARN  = 4 * 60 * 1000;  // 4 min → show warning
+let inactivityTimer   = null;
+let warningTimer      = null;
+let countdownInterval = null;
+
+function resetInactivityTimer() {
+  if (!currentUser || !appBooted || isGuestMode) return;
+  clearTimeout(inactivityTimer);
+  clearTimeout(warningTimer);
+  clearInterval(countdownInterval);
+  hideInactivityWarning();
+
+  // Warn at 4 minutes
+  warningTimer = setTimeout(showInactivityWarning, INACTIVITY_WARN);
+
+  // Force logout at 5 minutes
+  inactivityTimer = setTimeout(async () => {
+    hideInactivityWarning();
+    await doLogout();
+    setTimeout(() => authMsg('You were automatically logged out after 5 minutes of inactivity.'), 300);
+  }, INACTIVITY_LIMIT);
+}
+
+function showInactivityWarning() {
+  const banner = document.getElementById('inactivity-warning');
+  if (!banner) return;
+  banner.classList.add('show');
+  let secs = 60;
+  const el = document.getElementById('inactivity-countdown');
+  if (el) el.textContent = secs;
+  countdownInterval = setInterval(() => {
+    secs--;
+    const el = document.getElementById('inactivity-countdown');
+    if (el) el.textContent = Math.max(0, secs);
+    if (secs <= 0) clearInterval(countdownInterval);
+  }, 1000);
+}
+
+function hideInactivityWarning() {
+  const banner = document.getElementById('inactivity-warning');
+  if (banner) banner.classList.remove('show');
+  clearInterval(countdownInterval);
+}
+
+function stayLoggedIn() { resetInactivityTimer(); }
+
+// Track all user activity to reset the timer
+['mousemove','mousedown','keydown','touchstart','scroll','click'].forEach(evt => {
+  document.addEventListener(evt, resetInactivityTimer, { passive: true });
+});
+
+// Sign out when browser/tab is closed
+window.addEventListener('beforeunload', () => {
+  if (currentUser && !isGuestMode) {
+    localStorage.removeItem(DB_KEY);
+    try { sb.auth.signOut(); } catch(e) {}
+  }
+});
+
+// Re-verify session when user returns to the tab
+document.addEventListener('visibilitychange', async () => {
+  if (document.visibilityState === 'visible' && currentUser && appBooted && !isGuestMode) {
+    try {
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session) {
+        appBooted   = false;
+        currentUser = null;
+        localStorage.removeItem(DB_KEY);
+        showAuth();
+        setTimeout(() => authMsg('Your session expired. Please sign in again.'), 300);
+      }
+    } catch(e) { /* network issue — keep app open */ }
+  }
+});
 
 // ============================================================
 // DRAG & DROP — bank card reordering
