@@ -429,6 +429,14 @@ tbody tr:hover td{background:rgba(255,255,255,.02)}
 .inactivity-warning.show{display:flex}
 .inactivity-warning button{padding:4px 12px;border:1px solid rgba(255,255,255,.6);background:transparent;color:#fff;border-radius:6px;cursor:pointer;font-family:'Sora',sans-serif;font-size:12px}
 .inactivity-warning button:hover{background:rgba(255,255,255,.2)}
+
+/* Bank include-in-total toggle */
+.bc-include-toggle{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:500;cursor:pointer;border:none;font-family:'Sora',sans-serif;transition:all .15s;flex-shrink:0;user-select:none}
+.bc-include-toggle.included{background:var(--green-bg);color:var(--green)}
+.bc-include-toggle.included:hover{background:rgba(34,197,94,.2)}
+.bc-include-toggle.excluded{background:var(--surface3);color:var(--text3)}
+.bc-include-toggle.excluded:hover{background:var(--surface2);color:var(--text2)}
+.bc-excluded-card{opacity:.6}
 </style>
 </head>
 <body>
@@ -1254,6 +1262,8 @@ function initState(s) {
     // Migrate legacy flat array
     s.cats.expense = [{ name: 'General', subs: s.cats.expense }];
   }
+  // Default includeInTotal to true for any bank that doesn't have it set
+  if (s.banks) s.banks.forEach(b => { if (b.includeInTotal === undefined) b.includeInTotal = true; });
   if (!s.placeholders)    s.placeholders    = [];
   if (!s.placeholderCats) s.placeholderCats = [
     { id: 'pc1', name: 'Food',           budget: 5000 },
@@ -1486,6 +1496,14 @@ function deleteBank(id) {
   save(); refreshBankSelects(); renderDashboard();
 }
 
+function toggleBankInTotal(id) {
+  const bank = S.banks.find(b => b.id === id);
+  if (!bank) return;
+  bank.includeInTotal = bank.includeInTotal === false ? true : false;
+  save();
+  renderDashboard();
+}
+
 function toggleBankCard(id) {
   if (collapsedBanks.has(id)) collapsedBanks.delete(id);
   else collapsedBanks.add(id);
@@ -1496,10 +1514,12 @@ function toggleBankCard(id) {
 // DASHBOARD RENDER
 // ============================================================
 function renderDashboard() {
-  const totBal  = S.banks.reduce((s,b) => s + computeBankBalance(b.id), 0);
-  const totGoal = S.banks.reduce((s,b) => s + (b.goal||0), 0);
+  const includedBanks = S.banks.filter(b => b.includeInTotal !== false);
+  const totBal  = includedBanks.reduce((s,b) => s + computeBankBalance(b.id), 0);
+  const totGoal = includedBanks.reduce((s,b) => s + (b.goal||0), 0);
+  const excludedCount = S.banks.length - includedBanks.length;
   document.getElementById('dash-metrics').innerHTML = `
-    <div class="metric"><div class="m-label">Total balance (live)</div><div class="m-val m-green">${php(totBal)}</div><div class="m-sub">${S.banks.length} accounts tracked</div></div>
+    <div class="metric"><div class="m-label">Total balance (live)</div><div class="m-val m-green">${php(totBal)}</div><div class="m-sub">${includedBanks.length} of ${S.banks.length} accounts${excludedCount > 0 ? ' &middot; '+excludedCount+' excluded' : ''}</div></div>
     <div class="metric"><div class="m-label">Total goal</div><div class="m-val m-gold">${php(totGoal)}</div><div class="m-sub">${totGoal>0?Math.round(totBal/totGoal*100)+'% achieved':'No goal set'}</div></div>
   `;
 
@@ -1516,7 +1536,8 @@ function renderDashboard() {
       const savOut = S.entries.filter(e=>(e.type==='savings'||e.type==='transfer')&&(e.status==='transferred'||e.type==='transfer')&&e.fromBankId===b.id).reduce((s,e)=>s+(e.amount||0)+(e.fee||0),0);
       const savIn  = S.entries.filter(e=>(e.type==='savings'||e.type==='transfer')&&(e.status==='transferred'||e.type==='transfer')&&e.toBankId===b.id).reduce((s,e)=>s+(e.amount||0),0);
       const isCollapsed = collapsedBanks.has(b.id);
-      return `<div class="bank-card" draggable="true" data-id="${b.id}"
+      const isExcluded = b.includeInTotal === false;
+      return `<div class="bank-card${isExcluded ? ' bc-excluded-card' : ''}" draggable="true" data-id="${b.id}"
         ondragstart="onDragStart(event,'${b.id}')"
         ondragover="onDragOver(event)"
         ondragleave="onDragLeave(event)"
@@ -1532,7 +1553,14 @@ function renderDashboard() {
               <div class="bc-header-inst">${esc(b.bank||'Account')}</div>
             </div>
           </div>
-          <div class="bc-header-bal" style="color:${eff < 0 ? 'var(--red)' : 'var(--text)'}">${php(eff)}</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <button class="bc-include-toggle ${b.includeInTotal !== false ? 'included' : 'excluded'}"
+              onclick="event.stopPropagation();toggleBankInTotal('${b.id}')"
+              title="${b.includeInTotal !== false ? 'Click to exclude from total' : 'Click to include in total'}">
+              ${b.includeInTotal !== false ? '&#10003; In total' : '&#9675; Excluded'}
+            </button>
+            <div class="bc-header-bal" style="color:${eff < 0 ? 'var(--red)' : 'var(--text)'}">${php(eff)}</div>
+          </div>
         </div>
         <div class="bc-body ${isCollapsed ? 'collapsed' : ''}">
           <div class="bc-body-inner">
