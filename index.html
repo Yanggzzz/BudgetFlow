@@ -437,6 +437,16 @@ tbody tr:hover td{background:rgba(255,255,255,.02)}
 .bc-include-toggle.excluded{background:var(--surface3);color:var(--text3)}
 .bc-include-toggle.excluded:hover{background:var(--surface2);color:var(--text2)}
 .bc-excluded-card{opacity:.6}
+
+/* Account settings modal */
+.account-btn{display:flex;align-items:center;gap:6px;padding:5px 8px;border:1px solid var(--border2);background:transparent;color:var(--text3);border-radius:6px;font-size:11px;cursor:pointer;font-family:'Sora',sans-serif;transition:all .15s;white-space:nowrap}
+.account-btn:hover{color:var(--text);border-color:var(--accent)}
+.acct-section{margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid var(--border)}
+.acct-section:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0}
+.acct-section-title{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--text3);margin-bottom:10px}
+.acct-danger-zone{background:var(--red-bg);border:1px solid rgba(248,113,113,.3);border-radius:var(--r);padding:14px}
+.acct-danger-zone .acct-section-title{color:var(--red)}
+.delete-confirm-input{border-color:var(--red) !important}
 </style>
 </head>
 <body>
@@ -526,7 +536,11 @@ tbody tr:hover td{background:rgba(255,255,255,.02)}
       <div class="theme-toggle-thumb" id="theme-thumb"></div>
     </div>
   </button>
-  <div class="user-bar"><span class="user-email" id="user-email-display"></span><button class="user-logout" onclick="doLogout()">Sign out</button></div>
+  <div class="user-bar">
+    <span class="user-email" id="user-email-display"></span>
+    <button class="account-btn" onclick="openAccountModal()" title="Account settings">&#9881;</button>
+    <button class="user-logout" onclick="doLogout()">Sign out</button>
+  </div>
   <div style="padding:6px 16px 12px;font-size:11px;color:var(--text3)" id="sidebar-date"></div>
 </aside>
 <!-- MOBILE HEADER (top bar) -->
@@ -975,6 +989,44 @@ tbody tr:hover td{background:rgba(255,255,255,.02)}
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeCashflowModal()">Cancel</button>
       <button class="btn btn-primary" onclick="saveCashflowEntry()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ACCOUNT SETTINGS MODAL -->
+<div class="modal-overlay" id="account-modal">
+  <div class="modal" style="max-width:460px">
+    <h3>Account Settings</h3>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:20px" id="account-email-display"></div>
+
+    <!-- Change password -->
+    <div class="acct-section">
+      <div class="acct-section-title">Change Password</div>
+      <div class="auth-err" id="pw-err" style="margin-bottom:10px"></div>
+      <div class="auth-msg" id="pw-msg" style="margin-bottom:10px"></div>
+      <div class="form-group"><label>New password</label><input type="password" id="new-pw" placeholder="Min. 6 characters"></div>
+      <div class="form-group"><label>Confirm new password</label><input type="password" id="new-pw2" placeholder="Repeat new password"></div>
+      <button class="btn btn-primary btn-sm" onclick="doChangePassword()">Update password</button>
+    </div>
+
+    <!-- Delete account -->
+    <div class="acct-section">
+      <div class="acct-danger-zone">
+        <div class="acct-section-title">&#9888; Delete Account</div>
+        <p style="font-size:13px;color:var(--text2);margin-bottom:12px;line-height:1.6">
+          This permanently deletes your account and <strong>all your data</strong> — banks, entries, notes, budgets. This cannot be undone.
+        </p>
+        <div class="auth-err" id="del-err" style="margin-bottom:10px"></div>
+        <div class="form-group">
+          <label>Type <strong>DELETE</strong> to confirm</label>
+          <input type="text" id="delete-confirm-input" class="delete-confirm-input" placeholder="Type DELETE here">
+        </div>
+        <button class="btn btn-danger" onclick="doDeleteAccount()">&#128465; Delete my account &amp; all data</button>
+      </div>
+    </div>
+
+    <div class="modal-footer" style="padding-top:12px;margin-top:0;border-top:none">
+      <button class="btn btn-ghost" onclick="closeAccountModal()">Close</button>
     </div>
   </div>
 </div>
@@ -3118,6 +3170,83 @@ function closeMobileMore() {
   document.getElementById('mobile-more-overlay').classList.remove('open');
 }
 
+
+
+// ============================================================
+// ACCOUNT SETTINGS — change password + delete account
+// ============================================================
+function openAccountModal() {
+  // Clear fields
+  ['new-pw','new-pw2','delete-confirm-input'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  ['pw-err','pw-msg','del-err'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.style.display='none'; el.textContent=''; }
+  });
+  // Show current email
+  const emailEl = document.getElementById('account-email-display');
+  if (emailEl) emailEl.textContent = currentUser ? currentUser.email : '';
+  document.getElementById('account-modal').classList.add('open');
+}
+function closeAccountModal() {
+  document.getElementById('account-modal').classList.remove('open');
+}
+
+function acctErr(elId, msg) {
+  const el = document.getElementById(elId);
+  if (el) { el.textContent = msg; el.style.display = 'block'; }
+}
+function acctMsg(elId, msg) {
+  const el = document.getElementById(elId);
+  if (el) { el.textContent = msg; el.style.display = 'block'; }
+}
+
+async function doChangePassword() {
+  const pw  = document.getElementById('new-pw').value;
+  const pw2 = document.getElementById('new-pw2').value;
+  document.getElementById('pw-err').style.display = 'none';
+  document.getElementById('pw-msg').style.display = 'none';
+  if (!pw)          { acctErr('pw-err', 'Please enter a new password.'); return; }
+  if (pw.length < 6){ acctErr('pw-err', 'Password must be at least 6 characters.'); return; }
+  if (pw !== pw2)   { acctErr('pw-err', 'Passwords do not match.'); return; }
+  try {
+    const { error } = await sb.auth.updateUser({ password: pw });
+    if (error) { acctErr('pw-err', error.message); return; }
+    acctMsg('pw-msg', 'Password updated successfully!');
+    document.getElementById('new-pw').value  = '';
+    document.getElementById('new-pw2').value = '';
+  } catch(e) { acctErr('pw-err', 'Error: ' + e.message); }
+}
+
+async function doDeleteAccount() {
+  const confirm = document.getElementById('delete-confirm-input').value.trim();
+  document.getElementById('del-err').style.display = 'none';
+  if (confirm !== 'DELETE') {
+    acctErr('del-err', 'Please type DELETE exactly to confirm.');
+    return;
+  }
+  try {
+    // 1. Delete user data from Supabase (the SQL cascade handles the rest)
+    await sb.from('user_data').delete().eq('user_id', currentUser.id);
+    // 2. Call the delete_user SQL function to remove the auth account
+    const { error } = await sb.rpc('delete_user');
+    if (error) {
+      // Even if RPC fails, data is gone — still sign out
+      console.warn('RPC delete_user error:', error.message);
+    }
+    // 3. Clear everything locally and sign out
+    localStorage.removeItem(DB_KEY);
+    S = initState({});
+    appBooted   = false;
+    currentUser = null;
+    isGuestMode = false;
+    closeAccountModal();
+    await sb.auth.signOut();
+    showAuth();
+    setTimeout(() => authMsg('Your account and all data have been permanently deleted.'), 300);
+  } catch(e) { acctErr('del-err', 'Error: ' + e.message); }
+}
 
 // ============================================================
 // SECURITY — inactivity auto-logout + session protection
